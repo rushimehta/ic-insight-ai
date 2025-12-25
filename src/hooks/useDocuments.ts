@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Document {
   id: string;
@@ -16,6 +17,7 @@ interface Document {
 export function useDocuments() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
   const fetchDocuments = async () => {
     const { data, error } = await supabase
@@ -37,6 +39,11 @@ export function useDocuments() {
   }, []);
 
   const uploadDocument = async (file: File, metadata?: { dealName?: string; sector?: string }) => {
+    if (!user) {
+      toast.error("Please sign in to upload documents");
+      return null;
+    }
+    
     // Create document record
     const { data: doc, error: docError } = await supabase
       .from("documents")
@@ -47,6 +54,7 @@ export function useDocuments() {
         deal_name: metadata?.dealName,
         status: "pending",
         metadata: { sector: metadata?.sector },
+        user_id: user.id,
       })
       .select()
       .single();
