@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.generate-ic-document]
 verify_jwt = false
+
+[functions.send-ic-notification]
+verify_jwt = false

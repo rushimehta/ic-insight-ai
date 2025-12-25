@@ -12,7 +12,9 @@ import {
   User,
   FileEdit,
   ClipboardList,
-  Shield
+  Shield,
+  BarChart3,
+  Kanban
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +37,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", id: "dashboard" },
+  { icon: Kanban, label: "Deal Pipeline", id: "pipeline" },
+  { icon: BarChart3, label: "Analytics", id: "analytics" },
   { icon: FileText, label: "Documents", id: "documents" },
   { icon: FileEdit, label: "IC Generator", id: "generator" },
   { icon: MessageSquare, label: "AI Chat", id: "chat" },

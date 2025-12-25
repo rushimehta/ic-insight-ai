@@ -8,6 +8,8 @@ import { ICHistory } from "@/components/history/ICHistory";
 import { ICDocumentGenerator } from "@/components/generator/ICDocumentGenerator";
 import { ChairmanNotes } from "@/components/chairman/ChairmanNotes";
 import { AdminPanel } from "@/components/admin/AdminPanel";
+import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
+import { DealKanban } from "@/components/pipeline/DealKanban";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
@@ -17,6 +19,10 @@ const Index = () => {
     switch (activeTab) {
       case "dashboard":
         return <RoleDashboard />;
+      case "pipeline":
+        return <DealKanban />;
+      case "analytics":
+        return <AnalyticsDashboard />;
       case "documents":
         return <DocumentUpload />;
       case "generator":
