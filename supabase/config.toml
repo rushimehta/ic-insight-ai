@@ -1,1 +1,13 @@
 project_id = "lfafbjvypwbkjekktmrc"
+
+[functions.chat]
+verify_jwt = false
+
+[functions.process-document]
+verify_jwt = false
+
+[functions.submit-feedback]
+verify_jwt = false
+
+[functions.analytics]
+verify_jwt = false
