@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { Dashboard } from "@/components/dashboard/Dashboard";
+import { RoleDashboard } from "@/components/dashboard/RoleDashboard";
 import { DocumentUpload } from "@/components/documents/DocumentUpload";
 import { AIChat } from "@/components/chat/AIChat";
 import { QuestionPrep } from "@/components/questions/QuestionPrep";
 import { ICHistory } from "@/components/history/ICHistory";
 import { ICDocumentGenerator } from "@/components/generator/ICDocumentGenerator";
 import { ChairmanNotes } from "@/components/chairman/ChairmanNotes";
+import { AdminPanel } from "@/components/admin/AdminPanel";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
@@ -15,7 +16,7 @@ const Index = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <Dashboard />;
+        return <RoleDashboard />;
       case "documents":
         return <DocumentUpload />;
       case "generator":
@@ -28,8 +29,10 @@ const Index = () => {
         return <ICHistory />;
       case "chairman":
         return <ChairmanNotes />;
+      case "admin":
+        return <AdminPanel />;
       default:
-        return <Dashboard />;
+        return <RoleDashboard />;
     }
   };
 

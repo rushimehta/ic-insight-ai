@@ -41,6 +41,7 @@ const navItems: NavItem[] = [
   { icon: HelpCircle, label: "Question Prep", id: "questions" },
   { icon: History, label: "IC History", id: "history" },
   { icon: ClipboardList, label: "Chairman Notes", id: "chairman", requiresChairman: true },
+  { icon: Shield, label: "Admin", id: "admin", requiresChairman: true },
 ];
 
 interface SidebarProps {
