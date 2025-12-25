@@ -9,10 +9,15 @@ import {
   ChevronLeft,
   Sparkles,
   LogOut,
-  User
+  User,
+  FileEdit,
+  ClipboardList,
+  Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,14 +30,17 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   id: string;
+  requiresChairman?: boolean;
 }
 
 const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", id: "dashboard" },
   { icon: FileText, label: "Documents", id: "documents" },
+  { icon: FileEdit, label: "IC Generator", id: "generator" },
   { icon: MessageSquare, label: "AI Chat", id: "chat" },
   { icon: HelpCircle, label: "Question Prep", id: "questions" },
   { icon: History, label: "IC History", id: "history" },
+  { icon: ClipboardList, label: "Chairman Notes", id: "chairman", requiresChairman: true },
 ];
 
 interface SidebarProps {
@@ -43,6 +51,7 @@ interface SidebarProps {
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { user, signOut } = useAuth();
+  const { roles, isChairmanOrAdmin } = useUserPermissions();
 
   const handleSignOut = async () => {
     await signOut();
@@ -50,6 +59,11 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
   const userEmail = user?.email || "";
   const userName = user?.user_metadata?.full_name || userEmail.split("@")[0];
+  const displayRole = roles[0]?.replace("_", " ") || "Team Member";
+
+  const visibleNavItems = navItems.filter(item => 
+    !item.requiresChairman || isChairmanOrAdmin
+  );
 
   return (
     <aside
@@ -72,8 +86,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1">
-        {navItems.map((item) => (
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {visibleNavItems.map((item) => (
           <button
             key={item.id}
             onClick={() => onTabChange(item.id)}
@@ -106,7 +120,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {!collapsed && (
                 <div className="flex-1 text-left overflow-hidden">
                   <p className="font-medium text-foreground truncate">{userName}</p>
-                  <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                  <p className="text-xs text-muted-foreground truncate capitalize">{displayRole}</p>
                 </div>
               )}
             </button>
@@ -115,6 +129,15 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             <div className="px-2 py-1.5">
               <p className="text-sm font-medium">{userName}</p>
               <p className="text-xs text-muted-foreground">{userEmail}</p>
+              {roles.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {roles.map(role => (
+                    <Badge key={role} variant="secondary" className="text-[10px] capitalize">
+                      {role.replace("_", " ")}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">

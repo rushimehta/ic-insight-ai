@@ -125,6 +125,7 @@ export type Database = {
           ic_date: string | null
           id: string
           metadata: Json | null
+          sector: Database["public"]["Enums"]["sector_type"] | null
           status: string | null
           updated_at: string
           user_id: string | null
@@ -139,6 +140,7 @@ export type Database = {
           ic_date?: string | null
           id?: string
           metadata?: Json | null
+          sector?: Database["public"]["Enums"]["sector_type"] | null
           status?: string | null
           updated_at?: string
           user_id?: string | null
@@ -153,6 +155,7 @@ export type Database = {
           ic_date?: string | null
           id?: string
           metadata?: Json | null
+          sector?: Database["public"]["Enums"]["sector_type"] | null
           status?: string | null
           updated_at?: string
           user_id?: string | null
@@ -213,6 +216,63 @@ export type Database = {
           },
         ]
       }
+      ic_drafts: {
+        Row: {
+          company_overview: string | null
+          created_at: string
+          deal_name: string
+          deal_terms: string | null
+          financial_highlights: string | null
+          generated_document: string | null
+          ic_date: string | null
+          id: string
+          investment_thesis: string | null
+          key_risks: string | null
+          market_analysis: string | null
+          raw_notes: string | null
+          sector: Database["public"]["Enums"]["sector_type"]
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_overview?: string | null
+          created_at?: string
+          deal_name: string
+          deal_terms?: string | null
+          financial_highlights?: string | null
+          generated_document?: string | null
+          ic_date?: string | null
+          id?: string
+          investment_thesis?: string | null
+          key_risks?: string | null
+          market_analysis?: string | null
+          raw_notes?: string | null
+          sector: Database["public"]["Enums"]["sector_type"]
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_overview?: string | null
+          created_at?: string
+          deal_name?: string
+          deal_terms?: string | null
+          financial_highlights?: string | null
+          generated_document?: string | null
+          ic_date?: string | null
+          id?: string
+          investment_thesis?: string | null
+          key_risks?: string | null
+          market_analysis?: string | null
+          raw_notes?: string | null
+          sector?: Database["public"]["Enums"]["sector_type"]
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ic_meetings: {
         Row: {
           attendees: Json | null
@@ -258,12 +318,85 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_notes: {
+        Row: {
+          action_items: Json | null
+          ai_generated_summary: string | null
+          attendees: Json | null
+          chairman_id: string | null
+          created_at: string
+          deal_name: string
+          decision: string | null
+          decision_rationale: string | null
+          discussion_points: Json | null
+          follow_up_required: boolean | null
+          ic_meeting_id: string | null
+          id: string
+          key_concerns: Json | null
+          meeting_date: string
+          next_steps: string | null
+          raw_notes: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_items?: Json | null
+          ai_generated_summary?: string | null
+          attendees?: Json | null
+          chairman_id?: string | null
+          created_at?: string
+          deal_name: string
+          decision?: string | null
+          decision_rationale?: string | null
+          discussion_points?: Json | null
+          follow_up_required?: boolean | null
+          ic_meeting_id?: string | null
+          id?: string
+          key_concerns?: Json | null
+          meeting_date: string
+          next_steps?: string | null
+          raw_notes?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_items?: Json | null
+          ai_generated_summary?: string | null
+          attendees?: Json | null
+          chairman_id?: string | null
+          created_at?: string
+          deal_name?: string
+          decision?: string | null
+          decision_rationale?: string | null
+          discussion_points?: Json | null
+          follow_up_required?: boolean | null
+          ic_meeting_id?: string | null
+          id?: string
+          key_concerns?: Json | null
+          meeting_date?: string
+          next_steps?: string | null
+          raw_notes?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_notes_ic_meeting_id_fkey"
+            columns: ["ic_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "ic_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
+          department: string | null
           full_name: string | null
           id: string
+          primary_sector: Database["public"]["Enums"]["sector_type"] | null
           role: string | null
           team: string | null
           updated_at: string
@@ -271,8 +404,10 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          department?: string | null
           full_name?: string | null
           id: string
+          primary_sector?: Database["public"]["Enums"]["sector_type"] | null
           role?: string | null
           team?: string | null
           updated_at?: string
@@ -280,8 +415,10 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          department?: string | null
           full_name?: string | null
           id?: string
+          primary_sector?: Database["public"]["Enums"]["sector_type"] | null
           role?: string | null
           team?: string | null
           updated_at?: string
@@ -359,11 +496,72 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_sectors: {
+        Row: {
+          created_at: string
+          id: string
+          sector: Database["public"]["Enums"]["sector_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sector: Database["public"]["Enums"]["sector_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sector?: Database["public"]["Enums"]["sector_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_user_roles: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_sector_access: {
+        Args: {
+          _sector: Database["public"]["Enums"]["sector_type"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_chairman_or_admin: { Args: { _user_id: string }; Returns: boolean }
       search_documents: {
         Args: {
           match_count?: number
@@ -380,7 +578,17 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "deal_team" | "ic_member" | "ic_chairman" | "admin"
+      sector_type:
+        | "technology"
+        | "healthcare"
+        | "financial_services"
+        | "consumer_retail"
+        | "industrials"
+        | "energy"
+        | "real_estate"
+        | "media_entertainment"
+        | "infrastructure"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -507,6 +715,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["deal_team", "ic_member", "ic_chairman", "admin"],
+      sector_type: [
+        "technology",
+        "healthcare",
+        "financial_services",
+        "consumer_retail",
+        "industrials",
+        "energy",
+        "real_estate",
+        "media_entertainment",
+        "infrastructure",
+      ],
+    },
   },
 } as const
