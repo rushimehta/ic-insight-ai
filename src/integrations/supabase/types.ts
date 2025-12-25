@@ -56,6 +56,7 @@ export type Database = {
           id: string
           title: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           context?: Json | null
@@ -63,6 +64,7 @@ export type Database = {
           id?: string
           title?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           context?: Json | null
@@ -70,6 +72,7 @@ export type Database = {
           id?: string
           title?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -124,6 +127,7 @@ export type Database = {
           metadata: Json | null
           status: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           content?: string | null
@@ -137,6 +141,7 @@ export type Database = {
           metadata?: Json | null
           status?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           content?: string | null
@@ -150,6 +155,7 @@ export type Database = {
           metadata?: Json | null
           status?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -164,6 +170,7 @@ export type Database = {
           message_id: string | null
           metadata: Json | null
           rating: number | null
+          user_id: string | null
         }
         Insert: {
           comment?: string | null
@@ -175,6 +182,7 @@ export type Database = {
           message_id?: string | null
           metadata?: Json | null
           rating?: number | null
+          user_id?: string | null
         }
         Update: {
           comment?: string | null
@@ -186,6 +194,7 @@ export type Database = {
           message_id?: string | null
           metadata?: Json | null
           rating?: number | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -245,6 +254,36 @@ export type Database = {
           questions_asked?: Json | null
           sector?: string | null
           summary?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          role: string | null
+          team: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          role?: string | null
+          team?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          role?: string | null
+          team?: string | null
           updated_at?: string
         }
         Relationships: []
