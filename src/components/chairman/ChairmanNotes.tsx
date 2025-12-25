@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { ClipboardList, Plus, Sparkles, Loader2, Trash2, Users, Calendar, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { ClipboardList, Plus, Sparkles, Loader2, Trash2, Users, Calendar, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, DollarSign, ArrowRight, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { useMeetingNotes } from "@/hooks/useMeetingNotes";
 
@@ -16,6 +18,22 @@ const DECISION_COLORS: Record<string, string> = {
   needs_more_info: "bg-info/20 text-info border-info/30",
 };
 
+const IC_STAGES = [
+  { value: "ic1", label: "IC1 - Initial Review" },
+  { value: "ic2", label: "IC2 - Deep Dive" },
+  { value: "ic3", label: "IC3 - Due Diligence" },
+  { value: "ic4", label: "IC4 - Final Terms" },
+  { value: "ic_final", label: "IC Final - Decision" },
+];
+
+const IC_STAGE_COLORS: Record<string, string> = {
+  ic1: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  ic2: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  ic3: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  ic4: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  ic_final: "bg-green-500/20 text-green-400 border-green-500/30",
+};
+
 export function ChairmanNotes() {
   const { notes, isLoading, isGenerating, createNote, updateNote, deleteNote, generateSummary } = useMeetingNotes();
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
@@ -23,6 +41,8 @@ export function ChairmanNotes() {
     discussion: true,
     concerns: true,
     actions: true,
+    takeaways: true,
+    expenses: false,
   });
   
   const selectedNote = notes.find(n => n.id === selectedNoteId);
@@ -62,7 +82,7 @@ export function ChairmanNotes() {
           <div>
             <h2 className="text-2xl font-semibold">IC Chairman Notes</h2>
             <p className="text-muted-foreground">
-              Capture meeting notes and auto-generate structured takeaways
+              Capture detailed meeting discussions, decisions, and action items
             </p>
           </div>
         </div>
@@ -112,11 +132,18 @@ export function ChairmanNotes() {
                             {new Date(note.meeting_date).toLocaleDateString()}
                           </p>
                         </div>
-                        {note.decision && (
-                          <Badge className={cn("text-[10px] shrink-0 border", DECISION_COLORS[note.decision])}>
-                            {note.decision.replace("_", " ")}
-                          </Badge>
-                        )}
+                        <div className="flex flex-col gap-1 items-end">
+                          {(note as any).ic_stage && (
+                            <Badge className={cn("text-[10px] shrink-0 border", IC_STAGE_COLORS[(note as any).ic_stage] || "")}>
+                              {(note as any).ic_stage?.toUpperCase()}
+                            </Badge>
+                          )}
+                          {note.decision && (
+                            <Badge className={cn("text-[10px] shrink-0 border", DECISION_COLORS[note.decision])}>
+                              {note.decision.replace("_", " ")}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </button>
                   ))}
@@ -155,14 +182,31 @@ export function ChairmanNotes() {
                       className="font-medium text-lg border-none p-0 h-auto focus-visible:ring-0"
                       placeholder="Meeting title"
                     />
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      <Input
-                        type="date"
-                        value={selectedNote.meeting_date}
-                        onChange={(e) => handleFieldChange("meeting_date", e.target.value)}
-                        className="border-none p-0 h-auto text-xs focus-visible:ring-0 w-auto"
-                      />
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        <Input
+                          type="date"
+                          value={selectedNote.meeting_date}
+                          onChange={(e) => handleFieldChange("meeting_date", e.target.value)}
+                          className="border-none p-0 h-auto text-xs focus-visible:ring-0 w-auto"
+                        />
+                      </div>
+                      <Select
+                        value={(selectedNote as any).ic_stage || "ic1"}
+                        onValueChange={(v) => handleFieldChange("ic_stage", v)}
+                      >
+                        <SelectTrigger className="h-6 text-xs border-none bg-transparent p-0 w-auto gap-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {IC_STAGES.map(stage => (
+                            <SelectItem key={stage.value} value={stage.value}>
+                              {stage.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
@@ -208,11 +252,17 @@ export function ChairmanNotes() {
                       placeholder="Type or paste your meeting notes here...
 
 Example:
-- John raised concern about customer concentration - top 3 customers = 45% revenue
-- Team discussed mitigation through pipeline diversification
-- CFO presented updated model with sensitivity analysis
-- Decision to proceed to final DD phase
-- Action: Legal to circulate draft SPA by Friday"
+- Chairman opened with review of updated valuation model
+- CFO presented revised sensitivity analysis showing 15-20% IRR range
+- John (IC Member) raised concern about customer concentration - top 3 customers = 45% revenue
+- Team discussed mitigation through pipeline diversification and new enterprise deals
+- Sarah (Partner) questioned management's execution capability given recent departures
+- Management team provided detailed retention plan and succession roadmap
+- Legal flagged outstanding IP assignment issue with founding CTO
+- Decision: Proceed to IC4 with conditions
+- IC approved covering $75K for remaining legal due diligence expenses
+- Action: Legal to circulate revised SPA by Friday
+- Action: Deal team to schedule management presentations for next week"
                       rows={8}
                       className="font-mono text-sm"
                     />
@@ -244,6 +294,68 @@ Example:
                       </div>
                     </div>
                   )}
+
+                  {/* Key Takeaways */}
+                  <Collapsible open={expandedSections.takeaways}>
+                    <CollapsibleTrigger 
+                      onClick={() => toggleSection("takeaways")}
+                      className="flex items-center justify-between w-full text-left"
+                    >
+                      <h4 className="font-medium text-sm flex items-center gap-2">
+                        <Target className="w-4 h-4 text-primary" />
+                        Key Takeaways
+                      </h4>
+                      {expandedSections.takeaways ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3">
+                      <Textarea
+                        value={(selectedNote as any).key_takeaways?.join?.("\n") || ""}
+                        onChange={(e) => handleFieldChange("key_takeaways", e.target.value.split("\n").filter(Boolean))}
+                        placeholder="Enter key takeaways, one per line:
+• Valuation justified at 8x forward revenue based on growth trajectory
+• Management team demonstrated strong execution capability
+• IP issues must be resolved before closing
+• Customer concentration risk is manageable with current pipeline"
+                        rows={4}
+                        className="text-sm"
+                      />
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  {/* Further Investigation */}
+                  <div>
+                    <label className="text-sm font-medium mb-2 block flex items-center gap-2">
+                      <ArrowRight className="w-4 h-4 text-primary" />
+                      Further Investigation Required
+                    </label>
+                    <Textarea
+                      value={(selectedNote as any).further_investigation || ""}
+                      onChange={(e) => handleFieldChange("further_investigation", e.target.value)}
+                      placeholder="Areas requiring additional due diligence or analysis:
+• Deep dive into customer contract terms and renewal rates
+• Reference calls with 3-5 key enterprise customers
+• Technical architecture review with CTO
+• Competitive threat assessment from new market entrants"
+                      rows={4}
+                      className="text-sm"
+                    />
+                  </div>
+
+                  {/* Thesis Progress */}
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Investment Thesis Progress</label>
+                    <Textarea
+                      value={(selectedNote as any).thesis_progress || ""}
+                      onChange={(e) => handleFieldChange("thesis_progress", e.target.value)}
+                      placeholder="Updates to investment thesis based on this IC meeting:
+• Original thesis around market expansion validated by new customer pipeline data
+• Revenue quality thesis strengthened - 92% recurring, 150% NDR
+• Management execution thesis needs more evidence - requested detailed roadmap
+• Exit thesis updated - strategic interest from 2 potential acquirers confirmed"
+                      rows={4}
+                      className="text-sm"
+                    />
+                  </div>
 
                   {/* Discussion Points */}
                   {selectedNote.discussion_points?.length > 0 && (
@@ -326,6 +438,52 @@ Example:
                       </CollapsibleContent>
                     </Collapsible>
                   )}
+
+                  {/* IC Expenses */}
+                  <Collapsible open={expandedSections.expenses}>
+                    <CollapsibleTrigger 
+                      onClick={() => toggleSection("expenses")}
+                      className="flex items-center justify-between w-full text-left"
+                    >
+                      <h4 className="font-medium text-sm flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-primary" />
+                        IC Covered Expenses
+                      </h4>
+                      {expandedSections.expenses ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3 space-y-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={(selectedNote as any).ic_expenses_covered || false}
+                          onCheckedChange={(checked) => handleFieldChange("ic_expenses_covered", checked)}
+                        />
+                        <span className="text-sm">IC approved covering due diligence expenses</span>
+                      </label>
+                      {(selectedNote as any).ic_expenses_covered && (
+                        <div className="grid grid-cols-2 gap-4 pl-6">
+                          <div>
+                            <label className="text-xs font-medium mb-1 block">Approved Amount</label>
+                            <Input
+                              type="number"
+                              value={(selectedNote as any).ic_expenses_amount || ""}
+                              onChange={(e) => handleFieldChange("ic_expenses_amount", e.target.value)}
+                              placeholder="75000"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium mb-1 block">Expense Notes</label>
+                            <Input
+                              value={(selectedNote as any).ic_expenses_notes || ""}
+                              onChange={(e) => handleFieldChange("ic_expenses_notes", e.target.value)}
+                              placeholder="Legal DD, technical review, etc."
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
 
                   {/* Next Steps */}
                   {selectedNote.next_steps && (

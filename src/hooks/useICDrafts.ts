@@ -4,6 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { SectorType } from "@/hooks/useUserPermissions";
 
+export type ICStage = "ic1" | "ic2" | "ic3" | "ic4" | "ic_final" | "approved" | "rejected";
+
 interface ICDraft {
   id: string;
   deal_name: string;
@@ -20,6 +22,12 @@ interface ICDraft {
   ic_date: string | null;
   created_at: string;
   updated_at: string;
+  // New detailed fields
+  management_summary: string | null;
+  firm_summary: string | null;
+  product_offering: string | null;
+  comp_analysis: string | null;
+  financial_snapshot: string | null;
 }
 
 export function useICDrafts() {
@@ -69,6 +77,11 @@ export function useICDrafts() {
           deal_terms: draftData.deal_terms,
           raw_notes: draftData.raw_notes,
           ic_date: draftData.ic_date,
+          management_summary: draftData.management_summary,
+          firm_summary: draftData.firm_summary,
+          product_offering: draftData.product_offering,
+          comp_analysis: draftData.comp_analysis,
+          financial_snapshot: draftData.financial_snapshot,
           status: "draft",
         })
         .select()
