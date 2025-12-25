@@ -14,13 +14,331 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          session_id: string
+          sources: Json | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          session_id: string
+          sources?: Json | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          session_id?: string
+          sources?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      document_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          content: string | null
+          created_at: string
+          deal_name: string | null
+          file_size: number
+          file_type: string
+          filename: string
+          ic_date: string | null
+          id: string
+          metadata: Json | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          deal_name?: string | null
+          file_size: number
+          file_type: string
+          filename: string
+          ic_date?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          deal_name?: string | null
+          file_size?: number
+          file_type?: string
+          filename?: string
+          ic_date?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      feedback: {
+        Row: {
+          comment: string | null
+          correction_text: string | null
+          created_at: string
+          document_chunk_id: string | null
+          feedback_type: string
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          rating: number | null
+        }
+        Insert: {
+          comment?: string | null
+          correction_text?: string | null
+          created_at?: string
+          document_chunk_id?: string | null
+          feedback_type: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          rating?: number | null
+        }
+        Update: {
+          comment?: string | null
+          correction_text?: string | null
+          created_at?: string
+          document_chunk_id?: string | null
+          feedback_type?: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_document_chunk_id_fkey"
+            columns: ["document_chunk_id"]
+            isOneToOne: false
+            referencedRelation: "document_chunks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ic_meetings: {
+        Row: {
+          attendees: Json | null
+          created_at: string
+          deal_name: string
+          deal_size: string | null
+          id: string
+          key_concerns: Json | null
+          meeting_date: string
+          outcome: string | null
+          questions_asked: Json | null
+          sector: string | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          attendees?: Json | null
+          created_at?: string
+          deal_name: string
+          deal_size?: string | null
+          id?: string
+          key_concerns?: Json | null
+          meeting_date: string
+          outcome?: string | null
+          questions_asked?: Json | null
+          sector?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attendees?: Json | null
+          created_at?: string
+          deal_name?: string
+          deal_size?: string | null
+          id?: string
+          key_concerns?: Json | null
+          meeting_date?: string
+          outcome?: string | null
+          questions_asked?: Json | null
+          sector?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      question_patterns: {
+        Row: {
+          asker_type: string | null
+          category: string
+          created_at: string
+          example_context: string | null
+          frequency: number | null
+          id: string
+          importance_score: number | null
+          question_text: string
+          sectors: Json | null
+          updated_at: string
+        }
+        Insert: {
+          asker_type?: string | null
+          category: string
+          created_at?: string
+          example_context?: string | null
+          frequency?: number | null
+          id?: string
+          importance_score?: number | null
+          question_text: string
+          sectors?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          asker_type?: string | null
+          category?: string
+          created_at?: string
+          example_context?: string | null
+          frequency?: number | null
+          id?: string
+          importance_score?: number | null
+          question_text?: string
+          sectors?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      usage_analytics: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_analytics_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      search_documents: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          document_id: string
+          id: string
+          metadata: Json
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
