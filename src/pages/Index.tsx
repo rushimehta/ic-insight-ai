@@ -5,6 +5,8 @@ import { DocumentUpload } from "@/components/documents/DocumentUpload";
 import { AIChat } from "@/components/chat/AIChat";
 import { QuestionPrep } from "@/components/questions/QuestionPrep";
 import { ICHistory } from "@/components/history/ICHistory";
+import { ICDocumentGenerator } from "@/components/generator/ICDocumentGenerator";
+import { ChairmanNotes } from "@/components/chairman/ChairmanNotes";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
@@ -16,12 +18,16 @@ const Index = () => {
         return <Dashboard />;
       case "documents":
         return <DocumentUpload />;
+      case "generator":
+        return <ICDocumentGenerator />;
       case "chat":
         return <AIChat />;
       case "questions":
         return <QuestionPrep />;
       case "history":
         return <ICHistory />;
+      case "chairman":
+        return <ChairmanNotes />;
       default:
         return <Dashboard />;
     }
