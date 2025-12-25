@@ -3,12 +3,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
-interface Message {
+export interface ChatSource {
+  document_id: string;
+  similarity?: number;
+  content_preview?: string;
+  content?: string;
+  metadata?: {
+    filename?: string;
+    deal_name?: string;
+    ic_date?: string;
+    chunk_index?: number;
+    total_chunks?: number;
+  };
+}
+
+export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  sources?: string[];
+  sources?: ChatSource[];
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
@@ -106,18 +120,30 @@ export function useChat() {
         throw new Error("Failed to get response");
       }
 
+      // Parse sources from header
+      let sources: ChatSource[] = [];
+      const sourcesHeader = response.headers.get("X-Sources");
+      if (sourcesHeader) {
+        try {
+          sources = JSON.parse(sourcesHeader);
+        } catch (e) {
+          console.error("Failed to parse sources:", e);
+        }
+      }
+
       // Handle streaming response
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let assistantContent = "";
       let assistantId = (Date.now() + 1).toString();
 
-      // Add empty assistant message to update
+      // Add empty assistant message to update with sources
       setMessages(prev => [...prev, {
         id: assistantId,
         role: "assistant",
         content: "",
         timestamp: new Date(),
+        sources,
       }]);
 
       if (reader) {
