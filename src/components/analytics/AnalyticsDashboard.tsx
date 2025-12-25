@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area } from "recharts";
-import { TrendingUp, PieChart as PieChartIcon, BarChart3, Activity, Loader2 } from "lucide-react";
+import { TrendingUp, PieChart as PieChartIcon, BarChart3, Activity, Loader2, ArrowLeft, X, FileText, Calendar, Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 const SECTOR_COLORS: Record<string, string> = {
   technology: "#3b82f6",
@@ -19,31 +24,45 @@ const SECTOR_COLORS: Record<string, string> = {
 
 interface SectorData {
   sector: string;
+  sectorKey: string;
   approved: number;
-  passed: number;
+  rejected: number;
   pending: number;
+  deferred: number;
   total: number;
   approvalRate: number;
 }
 
-interface TrendData {
-  month: string;
-  deals: number;
-  approved: number;
-  questions: number;
+interface Meeting {
+  id: string;
+  deal_name: string;
+  sector: string;
+  meeting_date: string;
+  deal_size: string;
+  outcome: string;
+  summary: string;
 }
 
 interface QuestionCategory {
   category: string;
   count: number;
   percentage: number;
+  questions: { text: string; frequency: number }[];
+}
+
+interface DrillDownState {
+  type: "sector" | "question" | "month" | null;
+  data: any;
+  title: string;
 }
 
 export function AnalyticsDashboard() {
   const [sectorData, setSectorData] = useState<SectorData[]>([]);
-  const [trendData, setTrendData] = useState<TrendData[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [questionData, setQuestionData] = useState<QuestionCategory[]>([]);
+  const [trendData, setTrendData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [drillDown, setDrillDown] = useState<DrillDownState>({ type: null, data: null, title: "" });
 
   useEffect(() => {
     fetchAnalytics();
@@ -51,78 +70,86 @@ export function AnalyticsDashboard() {
 
   const fetchAnalytics = async () => {
     try {
-      // Fetch IC meetings by sector
-      const { data: meetings } = await supabase
+      // Fetch all IC meetings
+      const { data: meetingsData } = await supabase
         .from("ic_meetings")
-        .select("sector, outcome, meeting_date");
+        .select("*")
+        .order("meeting_date", { ascending: false });
+
+      setMeetings(meetingsData || []);
 
       // Aggregate by sector
-      const sectorMap: Record<string, { approved: number; passed: number; pending: number }> = {};
-      (meetings || []).forEach((m: any) => {
+      const sectorMap: Record<string, { approved: number; rejected: number; pending: number; deferred: number }> = {};
+      (meetingsData || []).forEach((m: any) => {
         const sector = m.sector || "other";
         if (!sectorMap[sector]) {
-          sectorMap[sector] = { approved: 0, passed: 0, pending: 0 };
+          sectorMap[sector] = { approved: 0, rejected: 0, pending: 0, deferred: 0 };
         }
         if (m.outcome === "approved") sectorMap[sector].approved++;
-        else if (m.outcome === "passed" || m.outcome === "rejected") sectorMap[sector].passed++;
+        else if (m.outcome === "rejected") sectorMap[sector].rejected++;
+        else if (m.outcome === "deferred") sectorMap[sector].deferred++;
         else sectorMap[sector].pending++;
       });
 
       const sectorStats: SectorData[] = Object.entries(sectorMap).map(([sector, counts]) => ({
-        sector: sector.replace("_", " "),
+        sector: sector.replace(/_/g, " "),
+        sectorKey: sector,
         ...counts,
-        total: counts.approved + counts.passed + counts.pending,
-        approvalRate: counts.approved + counts.passed > 0 
-          ? Math.round((counts.approved / (counts.approved + counts.passed)) * 100) 
+        total: counts.approved + counts.rejected + counts.pending + counts.deferred,
+        approvalRate: counts.approved + counts.rejected > 0 
+          ? Math.round((counts.approved / (counts.approved + counts.rejected)) * 100) 
           : 0,
       }));
       setSectorData(sectorStats);
 
       // Aggregate by month for trends
-      const monthMap: Record<string, { deals: number; approved: number }> = {};
-      (meetings || []).forEach((m: any) => {
+      const monthMap: Record<string, { deals: number; approved: number; rejected: number }> = {};
+      (meetingsData || []).forEach((m: any) => {
         const date = new Date(m.meeting_date);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
         if (!monthMap[monthKey]) {
-          monthMap[monthKey] = { deals: 0, approved: 0 };
+          monthMap[monthKey] = { deals: 0, approved: 0, rejected: 0 };
         }
         monthMap[monthKey].deals++;
         if (m.outcome === "approved") monthMap[monthKey].approved++;
+        if (m.outcome === "rejected") monthMap[monthKey].rejected++;
       });
 
-      // Fetch question patterns
-      const { data: questions } = await supabase
-        .from("question_patterns")
-        .select("category, frequency");
-
-      const categoryMap: Record<string, number> = {};
-      let totalQuestions = 0;
-      (questions || []).forEach((q: any) => {
-        categoryMap[q.category] = (categoryMap[q.category] || 0) + (q.frequency || 1);
-        totalQuestions += q.frequency || 1;
-      });
-
-      const questionStats: QuestionCategory[] = Object.entries(categoryMap)
-        .map(([category, count]) => ({
-          category,
-          count,
-          percentage: totalQuestions > 0 ? Math.round((count / totalQuestions) * 100) : 0,
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 8);
-      setQuestionData(questionStats);
-
-      // Create trend data with questions
-      const trends: TrendData[] = Object.entries(monthMap)
+      const trends = Object.entries(monthMap)
         .sort(([a], [b]) => a.localeCompare(b))
-        .slice(-12)
+        .slice(-24)
         .map(([month, data]) => ({
           month: new Date(month + "-01").toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
-          deals: data.deals,
-          approved: data.approved,
-          questions: Math.floor(Math.random() * 50) + 20, // Placeholder for demo
+          monthKey: month,
+          ...data,
         }));
       setTrendData(trends);
+
+      // Fetch question patterns with full data
+      const { data: questions } = await supabase
+        .from("question_patterns")
+        .select("*");
+
+      const categoryMap: Record<string, { count: number; questions: { text: string; frequency: number }[] }> = {};
+      (questions || []).forEach((q: any) => {
+        if (!categoryMap[q.category]) {
+          categoryMap[q.category] = { count: 0, questions: [] };
+        }
+        categoryMap[q.category].count += q.frequency || 1;
+        categoryMap[q.category].questions.push({ text: q.question_text, frequency: q.frequency || 1 });
+      });
+
+      const totalQuestions = Object.values(categoryMap).reduce((sum, c) => sum + c.count, 0);
+      const questionStats: QuestionCategory[] = Object.entries(categoryMap)
+        .map(([category, data]) => ({
+          category,
+          count: data.count,
+          percentage: totalQuestions > 0 ? Math.round((data.count / totalQuestions) * 100) : 0,
+          questions: data.questions.sort((a, b) => b.frequency - a.frequency),
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+      setQuestionData(questionStats);
 
     } catch (error) {
       console.error("Error fetching analytics:", error);
@@ -131,11 +158,45 @@ export function AnalyticsDashboard() {
     }
   };
 
+  const handleSectorClick = (data: any) => {
+    const sectorKey = data.sectorKey || data.sector?.replace(/ /g, "_");
+    const sectorMeetings = meetings.filter(m => m.sector === sectorKey);
+    setDrillDown({
+      type: "sector",
+      data: sectorMeetings,
+      title: `${data.sector} - IC Meetings (${sectorMeetings.length})`,
+    });
+  };
+
+  const handleQuestionClick = (data: QuestionCategory) => {
+    setDrillDown({
+      type: "question",
+      data: data.questions,
+      title: `${data.category} - Questions (${data.count})`,
+    });
+  };
+
+  const handleMonthClick = (data: any) => {
+    const monthMeetings = meetings.filter(m => {
+      const date = new Date(m.meeting_date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      return monthKey === data.monthKey;
+    });
+    setDrillDown({
+      type: "month",
+      data: monthMeetings,
+      title: `${data.month} - IC Meetings (${monthMeetings.length})`,
+    });
+  };
+
   const pieData = sectorData.map(s => ({
     name: s.sector,
     value: s.total,
-    color: SECTOR_COLORS[s.sector.replace(" ", "_")] || "#64748b",
+    sectorKey: s.sectorKey,
+    color: SECTOR_COLORS[s.sectorKey] || "#64748b",
   }));
+
+  const closeDrillDown = () => setDrillDown({ type: null, data: null, title: "" });
 
   if (isLoading) {
     return (
@@ -151,7 +212,7 @@ export function AnalyticsDashboard() {
       <div className="opacity-0 animate-fade-in">
         <h2 className="text-2xl font-semibold">Analytics</h2>
         <p className="text-muted-foreground mt-1">
-          Investment committee performance metrics and trends
+          Investment committee performance metrics and trends. <span className="text-primary">Click any chart element to drill down.</span>
         </p>
       </div>
 
@@ -181,6 +242,7 @@ export function AnalyticsDashboard() {
             <Card className="glass">
               <CardHeader>
                 <CardTitle className="text-base">Approval Rate by Sector</CardTitle>
+                <p className="text-xs text-muted-foreground">Click a bar to view deals</p>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -196,7 +258,13 @@ export function AnalyticsDashboard() {
                       }}
                       formatter={(value: number) => [`${value}%`, "Approval Rate"]}
                     />
-                    <Bar dataKey="approvalRate" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    <Bar 
+                      dataKey="approvalRate" 
+                      fill="hsl(var(--primary))" 
+                      radius={[0, 4, 4, 0]} 
+                      cursor="pointer"
+                      onClick={handleSectorClick}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -206,6 +274,7 @@ export function AnalyticsDashboard() {
             <Card className="glass">
               <CardHeader>
                 <CardTitle className="text-base">Deal Distribution by Sector</CardTitle>
+                <p className="text-xs text-muted-foreground">Click a segment to view deals</p>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -219,6 +288,8 @@ export function AnalyticsDashboard() {
                       outerRadius={100}
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       labelLine={false}
+                      cursor="pointer"
+                      onClick={(data) => handleSectorClick({ sector: data.name, sectorKey: data.sectorKey })}
                     >
                       {pieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -241,6 +312,7 @@ export function AnalyticsDashboard() {
           <Card className="glass opacity-0 animate-fade-in" style={{ animationDelay: "150ms" }}>
             <CardHeader>
               <CardTitle className="text-base">Deal Flow Over Time</CardTitle>
+              <p className="text-xs text-muted-foreground">Click a data point to view monthly details</p>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -266,8 +338,28 @@ export function AnalyticsDashboard() {
                     }}
                   />
                   <Legend />
-                  <Area type="monotone" dataKey="deals" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorDeals)" name="Total Deals" />
-                  <Area type="monotone" dataKey="approved" stroke="#10b981" fillOpacity={1} fill="url(#colorApproved)" name="Approved" />
+                  <Area 
+                    type="monotone" 
+                    dataKey="deals" 
+                    stroke="hsl(var(--primary))" 
+                    fillOpacity={1} 
+                    fill="url(#colorDeals)" 
+                    name="Total Deals" 
+                    cursor="pointer"
+                    activeDot={{ 
+                      r: 6, 
+                      cursor: "pointer",
+                      onClick: (props: any) => props?.payload && handleMonthClick(props.payload)
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="approved" 
+                    stroke="#10b981" 
+                    fillOpacity={1} 
+                    fill="url(#colorApproved)" 
+                    name="Approved" 
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </CardContent>
@@ -278,6 +370,7 @@ export function AnalyticsDashboard() {
           <Card className="glass opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
             <CardHeader>
               <CardTitle className="text-base">Sector Performance Breakdown</CardTitle>
+              <p className="text-xs text-muted-foreground">Click a bar to view underlying deals</p>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -293,9 +386,9 @@ export function AnalyticsDashboard() {
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="approved" stackId="a" fill="#10b981" name="Approved" />
-                  <Bar dataKey="passed" stackId="a" fill="#ef4444" name="Passed" />
-                  <Bar dataKey="pending" stackId="a" fill="#f59e0b" name="Pending" />
+                  <Bar dataKey="approved" stackId="a" fill="#10b981" name="Approved" cursor="pointer" onClick={handleSectorClick} />
+                  <Bar dataKey="rejected" stackId="a" fill="#ef4444" name="Rejected" cursor="pointer" onClick={handleSectorClick} />
+                  <Bar dataKey="pending" stackId="a" fill="#f59e0b" name="Pending" cursor="pointer" onClick={handleSectorClick} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -306,6 +399,7 @@ export function AnalyticsDashboard() {
           <Card className="glass opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
             <CardHeader>
               <CardTitle className="text-base">Monthly IC Activity Trends</CardTitle>
+              <p className="text-xs text-muted-foreground">Click a data point to view monthly IC meetings</p>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -321,9 +415,35 @@ export function AnalyticsDashboard() {
                     }}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="deals" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} name="Total Deals" />
-                  <Line type="monotone" dataKey="approved" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} name="Approved" />
-                  <Line type="monotone" dataKey="questions" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} name="Questions Asked" />
+                  <Line 
+                    type="monotone" 
+                    dataKey="deals" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2} 
+                    dot={{ r: 6, cursor: "pointer" }} 
+                    activeDot={{ 
+                      r: 8, 
+                      cursor: "pointer",
+                      onClick: (props: any) => props?.payload && handleMonthClick(props.payload)
+                    }}
+                    name="Total Deals" 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="approved" 
+                    stroke="#10b981" 
+                    strokeWidth={2} 
+                    dot={{ r: 4 }} 
+                    name="Approved" 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="rejected" 
+                    stroke="#ef4444" 
+                    strokeWidth={2} 
+                    dot={{ r: 4 }} 
+                    name="Rejected" 
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -334,6 +454,7 @@ export function AnalyticsDashboard() {
           <Card className="glass opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
             <CardHeader>
               <CardTitle className="text-base">Question Categories Distribution</CardTitle>
+              <p className="text-xs text-muted-foreground">Click a category to view specific questions</p>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -347,15 +468,97 @@ export function AnalyticsDashboard() {
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px"
                     }}
-                    formatter={(value: number, name: string) => [value, name === "count" ? "Questions" : name]}
+                    formatter={(value: number) => [value, "Questions Asked"]}
                   />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Questions Asked" />
+                  <Bar 
+                    dataKey="count" 
+                    fill="hsl(var(--primary))" 
+                    radius={[0, 4, 4, 0]} 
+                    name="Questions Asked" 
+                    cursor="pointer"
+                    onClick={(data) => handleQuestionClick(data as unknown as QuestionCategory)}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Drill-down Dialog */}
+      <Dialog open={drillDown.type !== null} onOpenChange={() => closeDrillDown()}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={closeDrillDown} className="h-8 w-8">
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              {drillDown.title}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            {drillDown.type === "sector" || drillDown.type === "month" ? (
+              <div className="space-y-3">
+                {(drillDown.data as Meeting[])?.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No meetings found</p>
+                ) : (
+                  (drillDown.data as Meeting[])?.map((meeting) => (
+                    <div key={meeting.id} className="p-4 rounded-lg bg-secondary/50 border border-border">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <FileText className="w-4 h-4 text-primary shrink-0" />
+                            <h4 className="font-medium truncate">{meeting.deal_name}</h4>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Building2 className="w-3 h-3" />
+                              {meeting.sector?.replace(/_/g, " ")}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(meeting.meeting_date).toLocaleDateString()}
+                            </span>
+                            {meeting.deal_size && <span>${meeting.deal_size}</span>}
+                          </div>
+                          {meeting.summary && (
+                            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{meeting.summary}</p>
+                          )}
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "shrink-0 capitalize",
+                            meeting.outcome === "approved" && "border-green-500 text-green-500",
+                            meeting.outcome === "rejected" && "border-red-500 text-red-500",
+                            meeting.outcome === "pending" && "border-yellow-500 text-yellow-500",
+                            meeting.outcome === "deferred" && "border-blue-500 text-blue-500"
+                          )}
+                        >
+                          {meeting.outcome || "pending"}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : drillDown.type === "question" ? (
+              <div className="space-y-3">
+                {(drillDown.data as { text: string; frequency: number }[])?.map((q, idx) => (
+                  <div key={idx} className="p-4 rounded-lg bg-secondary/50 border border-border">
+                    <p className="text-sm">{q.text}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="secondary" className="text-xs">
+                        Asked {q.frequency} times
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
