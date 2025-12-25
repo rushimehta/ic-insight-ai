@@ -28,6 +28,30 @@ function extractQuestions(text: string): string[] {
   return matches.map(q => q.trim()).filter(q => q.length > 10);
 }
 
+// Generate embeddings using Lovable AI
+async function generateEmbedding(text: string, apiKey: string): Promise<number[]> {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "text-embedding-3-small",
+      input: text.slice(0, 8000), // Limit input length
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("Embedding error:", response.status, error);
+    throw new Error(`Embedding API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.data[0].embedding;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,6 +62,7 @@ serve(async (req) => {
     
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -53,17 +78,35 @@ serve(async (req) => {
     const chunks = chunkText(content);
     console.log(`Created ${chunks.length} chunks`);
 
-    // Insert chunks into database
-    const chunkInserts = chunks.map((chunk, index) => ({
-      document_id: documentId,
-      chunk_index: index,
-      content: chunk,
-      metadata: { 
-        ...metadata,
+    // Generate embeddings and insert chunks
+    const chunkInserts = [];
+    
+    for (let index = 0; index < chunks.length; index++) {
+      const chunk = chunks[index];
+      let embedding = null;
+      
+      // Generate embedding if API key is available
+      if (LOVABLE_API_KEY) {
+        try {
+          embedding = await generateEmbedding(chunk, LOVABLE_API_KEY);
+          console.log(`Generated embedding for chunk ${index + 1}/${chunks.length}`);
+        } catch (embeddingError) {
+          console.error(`Failed to generate embedding for chunk ${index}:`, embeddingError);
+        }
+      }
+      
+      chunkInserts.push({
+        document_id: documentId,
         chunk_index: index,
-        total_chunks: chunks.length 
-      },
-    }));
+        content: chunk,
+        embedding: embedding ? `[${embedding.join(",")}]` : null,
+        metadata: { 
+          ...metadata,
+          chunk_index: index,
+          total_chunks: chunks.length 
+        },
+      });
+    }
 
     const { error: chunkError } = await supabase
       .from("document_chunks")
@@ -112,13 +155,14 @@ serve(async (req) => {
       .update({ status: "completed" })
       .eq("id", documentId);
 
-    console.log("Document processing completed");
+    console.log("Document processing completed with embeddings");
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         chunks: chunks.length,
-        questions: questions.length 
+        questions: questions.length,
+        embeddings: chunkInserts.filter(c => c.embedding).length
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

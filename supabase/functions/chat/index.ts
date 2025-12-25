@@ -6,6 +6,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Generate embeddings using Lovable AI
+async function generateEmbedding(text: string, apiKey: string): Promise<number[]> {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "text-embedding-3-small",
+      input: text.slice(0, 8000),
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("Embedding error:", response.status, error);
+    throw new Error(`Embedding API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.data[0].embedding;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -24,22 +48,56 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Get relevant document chunks for RAG (if we have embeddings)
+    // Get relevant document chunks using semantic search
     let relevantContext = "";
+    let sources: any[] = [];
     const userMessage = messages[messages.length - 1]?.content || "";
     
-    // Try to find relevant chunks using keyword search (embeddings will be added later)
-    const { data: chunks } = await supabase
-      .from("document_chunks")
-      .select("content, metadata, document_id")
-      .textSearch("content", userMessage.split(" ").slice(0, 5).join(" | "), {
-        type: "plain",
-        config: "english"
-      })
-      .limit(5);
+    try {
+      // Generate embedding for the user's query
+      const queryEmbedding = await generateEmbedding(userMessage, LOVABLE_API_KEY);
+      
+      // Search for similar document chunks using the search_documents function
+      const { data: chunks, error: searchError } = await supabase.rpc(
+        "search_documents",
+        {
+          query_embedding: `[${queryEmbedding.join(",")}]`,
+          match_threshold: 0.5,
+          match_count: 5,
+        }
+      );
 
-    if (chunks && chunks.length > 0) {
-      relevantContext = chunks.map((c: any) => c.content).join("\n\n---\n\n");
+      if (searchError) {
+        console.error("Semantic search error:", searchError);
+      } else if (chunks && chunks.length > 0) {
+        console.log(`Found ${chunks.length} relevant chunks via semantic search`);
+        relevantContext = chunks.map((c: any) => c.content).join("\n\n---\n\n");
+        sources = chunks.map((c: any) => ({
+          document_id: c.document_id,
+          similarity: c.similarity,
+          content_preview: c.content.slice(0, 200),
+        }));
+      }
+    } catch (embeddingError) {
+      console.error("Embedding generation failed, falling back to keyword search:", embeddingError);
+      
+      // Fallback to keyword search
+      const { data: chunks } = await supabase
+        .from("document_chunks")
+        .select("content, metadata, document_id")
+        .textSearch("content", userMessage.split(" ").slice(0, 5).join(" | "), {
+          type: "plain",
+          config: "english"
+        })
+        .limit(5);
+
+      if (chunks && chunks.length > 0) {
+        relevantContext = chunks.map((c: any) => c.content).join("\n\n---\n\n");
+        sources = chunks.map((c: any) => ({
+          document_id: c.document_id,
+          content_preview: c.content.slice(0, 200),
+        }));
+      }
     }
 
     // Build system prompt with IC context
@@ -83,7 +141,7 @@ Be concise, professional, and actionable. When suggesting questions, explain why
     // Add current messages
     fullMessages.push(...messages.filter((m: any) => m.role !== "system"));
 
-    console.log("Calling Lovable AI with", fullMessages.length, "messages");
+    console.log("Calling Lovable AI with", fullMessages.length, "messages, sources:", sources.length);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -119,8 +177,13 @@ Be concise, professional, and actionable. When suggesting questions, explain why
       });
     }
 
+    // Return streaming response with sources in header
     return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: { 
+        ...corsHeaders, 
+        "Content-Type": "text/event-stream",
+        "X-Sources": JSON.stringify(sources),
+      },
     });
   } catch (e) {
     console.error("chat error:", e);
