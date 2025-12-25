@@ -10,6 +10,7 @@ import { ChairmanNotes } from "@/components/chairman/ChairmanNotes";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 import { DealKanban } from "@/components/pipeline/DealKanban";
+import { DocumentRepository } from "@/components/repository/DocumentRepository";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
@@ -25,6 +26,8 @@ const Index = () => {
         return <AnalyticsDashboard />;
       case "documents":
         return <DocumentUpload />;
+      case "repository":
+        return <DocumentRepository />;
       case "generator":
         return <ICDocumentGenerator />;
       case "chat":
