@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useICDrafts } from "@/hooks/useICDrafts";
+import { DocumentExport } from "@/components/export/DocumentExport";
 
 const SECTORS = [
   { value: "technology", label: "Technology" },
@@ -162,6 +163,12 @@ export function ICDocumentGenerator() {
                     <Eye className="w-4 h-4 mr-2" />
                     {showPreview ? "Edit" : "Preview"}
                   </Button>
+                  {showPreview && selectedDraft.generated_document && (
+                    <DocumentExport
+                      documentContent={selectedDraft.generated_document}
+                      documentTitle={selectedDraft.deal_name}
+                    />
+                  )}
                   <Button
                     variant="glow"
                     size="sm"
