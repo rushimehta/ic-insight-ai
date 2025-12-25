@@ -14,7 +14,8 @@ import {
   ClipboardList,
   Shield,
   BarChart3,
-  Kanban
+  Kanban,
+  FolderOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +41,7 @@ const navItems: NavItem[] = [
   { icon: Kanban, label: "Deal Pipeline", id: "pipeline" },
   { icon: BarChart3, label: "Analytics", id: "analytics" },
   { icon: FileText, label: "Documents", id: "documents" },
+  { icon: FolderOpen, label: "Repository", id: "repository" },
   { icon: FileEdit, label: "IC Generator", id: "generator" },
   { icon: MessageSquare, label: "AI Chat", id: "chat" },
   { icon: HelpCircle, label: "Question Prep", id: "questions" },

@@ -10,10 +10,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSectors } from "@/hooks/useSectors";
 import { cn } from "@/lib/utils";
 
 type DealStage = "sourcing" | "initial_review" | "due_diligence" | "ic_scheduled" | "ic_complete" | "approved" | "closed" | "passed";
 type SectorType = "technology" | "healthcare" | "financial_services" | "consumer_retail" | "industrials" | "energy" | "real_estate" | "media_entertainment" | "infrastructure";
+type ICStage = "ic1" | "ic2" | "ic3" | "ic4" | "ic_final" | "approved" | "rejected";
 
 interface Deal {
   id: string;
@@ -21,6 +23,7 @@ interface Deal {
   company_name: string;
   sector: SectorType;
   stage: DealStage;
+  ic_stage?: ICStage | null;
   deal_size: string | null;
   description: string | null;
   lead_partner: string | null;
@@ -39,20 +42,27 @@ const STAGES: { id: DealStage; label: string; color: string }[] = [
   { id: "passed", label: "Passed", color: "bg-red-500" },
 ];
 
-const SECTORS: { value: SectorType; label: string }[] = [
-  { value: "technology", label: "Technology" },
-  { value: "healthcare", label: "Healthcare" },
-  { value: "financial_services", label: "Financial Services" },
-  { value: "consumer_retail", label: "Consumer & Retail" },
-  { value: "industrials", label: "Industrials" },
-  { value: "energy", label: "Energy" },
-  { value: "real_estate", label: "Real Estate" },
-  { value: "media_entertainment", label: "Media & Entertainment" },
-  { value: "infrastructure", label: "Infrastructure" },
+const IC_STAGES: { value: ICStage; label: string; shortLabel: string }[] = [
+  { value: "ic1", label: "IC1 - Initial Review", shortLabel: "IC1" },
+  { value: "ic2", label: "IC2 - Deep Dive", shortLabel: "IC2" },
+  { value: "ic3", label: "IC3 - Due Diligence", shortLabel: "IC3" },
+  { value: "ic4", label: "IC4 - Final Terms", shortLabel: "IC4" },
+  { value: "ic_final", label: "IC Final - Decision", shortLabel: "Final" },
 ];
+
+const IC_STAGE_COLORS: Record<string, string> = {
+  ic1: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  ic2: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  ic3: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  ic4: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  ic_final: "bg-green-500/20 text-green-400 border-green-500/30",
+  approved: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  rejected: "bg-red-500/20 text-red-400 border-red-500/30",
+};
 
 export function DealKanban() {
   const { user } = useAuth();
+  const { activeSectors } = useSectors();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [draggedDeal, setDraggedDeal] = useState<Deal | null>(null);
@@ -64,6 +74,7 @@ export function DealKanban() {
     deal_size: "",
     description: "",
     lead_partner: "",
+    ic_stage: "ic1" as ICStage,
   });
 
   useEffect(() => {
@@ -149,6 +160,7 @@ export function DealKanban() {
         deal_size: "",
         description: "",
         lead_partner: "",
+        ic_stage: "ic1",
       });
       toast.success("Deal created successfully");
     } catch (error) {
@@ -217,12 +229,30 @@ export function DealKanban() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {SECTORS.map(s => (
+                      {activeSectors.map(s => (
+                        <SelectItem key={s.id} value={s.name}>{s.display_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">IC Stage</label>
+                  <Select
+                    value={newDeal.ic_stage}
+                    onValueChange={(v) => setNewDeal(prev => ({ ...prev, ic_stage: v as ICStage }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {IC_STAGES.map(s => (
                         <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">Deal Size</label>
                   <Input
@@ -305,6 +335,11 @@ export function DealKanban() {
                                   <Badge variant="outline" className="text-[10px] capitalize">
                                     {deal.sector.replace("_", " ")}
                                   </Badge>
+                                  {deal.ic_stage && (
+                                    <Badge className={cn("text-[10px] border", IC_STAGE_COLORS[deal.ic_stage] || "")}>
+                                      {IC_STAGES.find(s => s.value === deal.ic_stage)?.shortLabel || deal.ic_stage.toUpperCase()}
+                                    </Badge>
+                                  )}
                                   {deal.deal_size && (
                                     <Badge variant="secondary" className="text-[10px]">
                                       <DollarSign className="w-2.5 h-2.5 mr-0.5" />
