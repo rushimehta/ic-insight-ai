@@ -86,6 +86,7 @@ export type Database = {
           deal_team: Json | null
           description: string | null
           ic_date: string | null
+          ic_stage: Database["public"]["Enums"]["ic_stage"] | null
           id: string
           lead_partner: string | null
           metadata: Json | null
@@ -103,6 +104,7 @@ export type Database = {
           deal_team?: Json | null
           description?: string | null
           ic_date?: string | null
+          ic_stage?: Database["public"]["Enums"]["ic_stage"] | null
           id?: string
           lead_partner?: string | null
           metadata?: Json | null
@@ -120,6 +122,7 @@ export type Database = {
           deal_team?: Json | null
           description?: string | null
           ic_date?: string | null
+          ic_stage?: Database["public"]["Enums"]["ic_stage"] | null
           id?: string
           lead_partner?: string | null
           metadata?: Json | null
@@ -183,6 +186,7 @@ export type Database = {
           status: string | null
           updated_at: string
           user_id: string | null
+          year: number | null
         }
         Insert: {
           content?: string | null
@@ -198,6 +202,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           user_id?: string | null
+          year?: number | null
         }
         Update: {
           content?: string | null
@@ -213,6 +218,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           user_id?: string | null
+          year?: number | null
         }
         Relationships: []
       }
@@ -272,17 +278,22 @@ export type Database = {
       }
       ic_drafts: {
         Row: {
+          comp_analysis: string | null
           company_overview: string | null
           created_at: string
           deal_name: string
           deal_terms: string | null
           financial_highlights: string | null
+          financial_snapshot: string | null
+          firm_summary: string | null
           generated_document: string | null
           ic_date: string | null
           id: string
           investment_thesis: string | null
           key_risks: string | null
+          management_summary: string | null
           market_analysis: string | null
+          product_offering: string | null
           raw_notes: string | null
           sector: Database["public"]["Enums"]["sector_type"]
           status: string | null
@@ -290,17 +301,22 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          comp_analysis?: string | null
           company_overview?: string | null
           created_at?: string
           deal_name: string
           deal_terms?: string | null
           financial_highlights?: string | null
+          financial_snapshot?: string | null
+          firm_summary?: string | null
           generated_document?: string | null
           ic_date?: string | null
           id?: string
           investment_thesis?: string | null
           key_risks?: string | null
+          management_summary?: string | null
           market_analysis?: string | null
+          product_offering?: string | null
           raw_notes?: string | null
           sector: Database["public"]["Enums"]["sector_type"]
           status?: string | null
@@ -308,17 +324,22 @@ export type Database = {
           user_id: string
         }
         Update: {
+          comp_analysis?: string | null
           company_overview?: string | null
           created_at?: string
           deal_name?: string
           deal_terms?: string | null
           financial_highlights?: string | null
+          financial_snapshot?: string | null
+          firm_summary?: string | null
           generated_document?: string | null
           ic_date?: string | null
           id?: string
           investment_thesis?: string | null
           key_risks?: string | null
+          management_summary?: string | null
           market_analysis?: string | null
+          product_offering?: string | null
           raw_notes?: string | null
           sector?: Database["public"]["Enums"]["sector_type"]
           status?: string | null
@@ -384,13 +405,20 @@ export type Database = {
           decision_rationale: string | null
           discussion_points: Json | null
           follow_up_required: boolean | null
+          further_investigation: string | null
+          ic_expenses_amount: number | null
+          ic_expenses_covered: boolean | null
+          ic_expenses_notes: string | null
           ic_meeting_id: string | null
+          ic_stage: Database["public"]["Enums"]["ic_stage"] | null
           id: string
           key_concerns: Json | null
+          key_takeaways: Json | null
           meeting_date: string
           next_steps: string | null
           raw_notes: string | null
           status: string | null
+          thesis_progress: string | null
           updated_at: string
         }
         Insert: {
@@ -404,13 +432,20 @@ export type Database = {
           decision_rationale?: string | null
           discussion_points?: Json | null
           follow_up_required?: boolean | null
+          further_investigation?: string | null
+          ic_expenses_amount?: number | null
+          ic_expenses_covered?: boolean | null
+          ic_expenses_notes?: string | null
           ic_meeting_id?: string | null
+          ic_stage?: Database["public"]["Enums"]["ic_stage"] | null
           id?: string
           key_concerns?: Json | null
+          key_takeaways?: Json | null
           meeting_date: string
           next_steps?: string | null
           raw_notes?: string | null
           status?: string | null
+          thesis_progress?: string | null
           updated_at?: string
         }
         Update: {
@@ -424,13 +459,20 @@ export type Database = {
           decision_rationale?: string | null
           discussion_points?: Json | null
           follow_up_required?: boolean | null
+          further_investigation?: string | null
+          ic_expenses_amount?: number | null
+          ic_expenses_covered?: boolean | null
+          ic_expenses_notes?: string | null
           ic_meeting_id?: string | null
+          ic_stage?: Database["public"]["Enums"]["ic_stage"] | null
           id?: string
           key_concerns?: Json | null
+          key_takeaways?: Json | null
           meeting_date?: string
           next_steps?: string | null
           raw_notes?: string | null
           status?: string | null
+          thesis_progress?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -514,6 +556,36 @@ export type Database = {
           importance_score?: number | null
           question_text?: string
           sectors?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sectors: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
           updated_at?: string
         }
         Relationships: []
@@ -642,6 +714,14 @@ export type Database = {
         | "approved"
         | "closed"
         | "passed"
+      ic_stage:
+        | "ic1"
+        | "ic2"
+        | "ic3"
+        | "ic4"
+        | "ic_final"
+        | "approved"
+        | "rejected"
       sector_type:
         | "technology"
         | "healthcare"
@@ -789,6 +869,15 @@ export const Constants = {
         "approved",
         "closed",
         "passed",
+      ],
+      ic_stage: [
+        "ic1",
+        "ic2",
+        "ic3",
+        "ic4",
+        "ic_final",
+        "approved",
+        "rejected",
       ],
       sector_type: [
         "technology",

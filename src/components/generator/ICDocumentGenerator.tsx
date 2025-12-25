@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Plus, Sparkles, Loader2, Save, Trash2, Eye, Calendar, Building2, ChevronRight } from "lucide-react";
+import { FileText, Plus, Sparkles, Loader2, Trash2, Eye, Calendar, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,19 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useICDrafts } from "@/hooks/useICDrafts";
+import { useSectors } from "@/hooks/useSectors";
 import { DocumentExport } from "@/components/export/DocumentExport";
-
-const SECTORS = [
-  { value: "technology", label: "Technology" },
-  { value: "healthcare", label: "Healthcare" },
-  { value: "financial_services", label: "Financial Services" },
-  { value: "consumer_retail", label: "Consumer & Retail" },
-  { value: "industrials", label: "Industrials" },
-  { value: "energy", label: "Energy" },
-  { value: "real_estate", label: "Real Estate" },
-  { value: "media_entertainment", label: "Media & Entertainment" },
-  { value: "infrastructure", label: "Infrastructure" },
-];
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -33,6 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function ICDocumentGenerator() {
   const { drafts, isLoading, isGenerating, createDraft, updateDraft, deleteDraft, generateDocument } = useICDrafts();
+  const { activeSectors } = useSectors();
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   
@@ -59,13 +49,20 @@ export function ICDocumentGenerator() {
     setShowPreview(true);
   };
 
+  const getSectorDisplayName = (sectorName: string) => {
+    const sector = activeSectors.find(s => s.name === sectorName);
+    return sector?.display_name || sectorName.split('_').map(w => 
+      w.charAt(0).toUpperCase() + w.slice(1)
+    ).join(' ');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="opacity-0 animate-fade-in">
         <h2 className="text-2xl font-semibold">IC Document Generator</h2>
         <p className="text-muted-foreground mt-1">
-          Create professional investment committee memoranda from raw drafts and notes
+          Create professional investment committee memoranda with comprehensive deal analysis
         </p>
       </div>
 
@@ -112,7 +109,7 @@ export function ICDocumentGenerator() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-sm truncate">{draft.deal_name}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{draft.sector?.replace("_", " ")}</p>
+                          <p className="text-xs text-muted-foreground">{getSectorDisplayName(draft.sector)}</p>
                         </div>
                         <Badge className={cn("text-[10px] shrink-0", STATUS_COLORS[draft.status])}>
                           {draft.status}
@@ -204,20 +201,32 @@ export function ICDocumentGenerator() {
                 </ScrollArea>
               ) : (
                 <Tabs defaultValue="overview" className="w-full">
-                  <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent p-0">
-                    <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+                  <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent p-0 overflow-x-auto flex-nowrap">
+                    <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap">
                       Overview
                     </TabsTrigger>
-                    <TabsTrigger value="thesis" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+                    <TabsTrigger value="management" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap">
+                      Management
+                    </TabsTrigger>
+                    <TabsTrigger value="firm" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap">
+                      Firm Summary
+                    </TabsTrigger>
+                    <TabsTrigger value="product" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap">
+                      Product/Offering
+                    </TabsTrigger>
+                    <TabsTrigger value="thesis" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap">
                       Investment Thesis
                     </TabsTrigger>
-                    <TabsTrigger value="analysis" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
-                      Analysis
+                    <TabsTrigger value="analysis" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap">
+                      Comp Analysis
                     </TabsTrigger>
-                    <TabsTrigger value="risks" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+                    <TabsTrigger value="financials" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap">
+                      Financials
+                    </TabsTrigger>
+                    <TabsTrigger value="risks" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap">
                       Risks & Terms
                     </TabsTrigger>
-                    <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+                    <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap">
                       Raw Notes
                     </TabsTrigger>
                   </TabsList>
@@ -244,9 +253,9 @@ export function ICDocumentGenerator() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {SECTORS.map((s) => (
-                                  <SelectItem key={s.value} value={s.value}>
-                                    {s.label}
+                                {activeSectors.map((s) => (
+                                  <SelectItem key={s.id} value={s.name}>
+                                    {s.display_name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -272,13 +281,78 @@ export function ICDocumentGenerator() {
                         </div>
                       </TabsContent>
 
+                      <TabsContent value="management" className="m-0 space-y-4">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Management Summary</label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Key leadership team members, their backgrounds, track record, and capabilities
+                          </p>
+                          <Textarea
+                            value={selectedDraft.management_summary || ""}
+                            onChange={(e) => handleFieldChange("management_summary", e.target.value)}
+                            placeholder="CEO: John Smith - 20+ years in SaaS, previously CEO of XYZ Corp (exited $500M)...
+CFO: Jane Doe - Former Goldman Sachs, MBA Wharton...
+CTO: Mike Johnson - Founded 2 tech startups, PhD Stanford..."
+                            rows={10}
+                          />
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="firm" className="m-0 space-y-4">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Firm Summary</label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Company history, founding story, mission, corporate structure, key milestones
+                          </p>
+                          <Textarea
+                            value={selectedDraft.firm_summary || ""}
+                            onChange={(e) => handleFieldChange("firm_summary", e.target.value)}
+                            placeholder="Founded in 2015 in San Francisco...
+Mission: To transform how enterprises manage data...
+Key milestones:
+- 2017: Series A, launched V1.0
+- 2019: Series B, expanded to Europe
+- 2022: Reached $50M ARR..."
+                            rows={10}
+                          />
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="product" className="m-0 space-y-4">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Product / Offering Summary</label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Core products, services, technology stack, competitive advantages, IP
+                          </p>
+                          <Textarea
+                            value={selectedDraft.product_offering || ""}
+                            onChange={(e) => handleFieldChange("product_offering", e.target.value)}
+                            placeholder="Core Product: Enterprise SaaS platform for data management
+Key Features:
+- Real-time analytics dashboard
+- AI-powered insights engine
+- Multi-cloud deployment support
+Technology: Built on Kubernetes, uses proprietary ML models
+Competitive Moat: 15 patents, 3-year tech lead over competitors..."
+                            rows={10}
+                          />
+                        </div>
+                      </TabsContent>
+
                       <TabsContent value="thesis" className="m-0 space-y-4">
                         <div>
-                          <label className="text-sm font-medium mb-2 block">Investment Thesis</label>
+                          <label className="text-sm font-medium mb-2 block">Key Investment Thesis</label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Core investment rationale, value drivers, growth levers, exit potential
+                          </p>
                           <Textarea
                             value={selectedDraft.investment_thesis || ""}
                             onChange={(e) => handleFieldChange("investment_thesis", e.target.value)}
-                            placeholder="Articulate the core investment thesis, key value drivers, and why this is an attractive opportunity..."
+                            placeholder="1. Market Timing: $50B TAM growing 25% annually
+2. Category Leadership: #2 player with path to #1
+3. Unit Economics: 150% NDR, 80% gross margins
+4. Multiple Expansion Opportunity: Currently at 8x ARR vs. peers at 15x
+5. Exit Path: Strategic interest from major tech cos..."
                             rows={10}
                           />
                         </div>
@@ -286,20 +360,56 @@ export function ICDocumentGenerator() {
 
                       <TabsContent value="analysis" className="m-0 space-y-4">
                         <div>
+                          <label className="text-sm font-medium mb-2 block">Competitive Analysis</label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Key competitors, market positioning, differentiation, competitive dynamics
+                          </p>
+                          <Textarea
+                            value={selectedDraft.comp_analysis || ""}
+                            onChange={(e) => handleFieldChange("comp_analysis", e.target.value)}
+                            placeholder="| Metric      | Target  | Comp A  | Comp B  | Comp C  |
+|-------------|---------|---------|---------|---------|
+| Revenue     | $50M    | $100M   | $35M    | $75M    |
+| Growth      | 45%     | 30%     | 60%     | 25%     |
+| Gross Margin| 80%     | 75%     | 70%     | 78%     |
+| NDR         | 150%    | 120%    | 140%    | 110%    |
+
+Key Differentiators: Superior product, stronger enterprise focus..."
+                            rows={10}
+                          />
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="financials" className="m-0 space-y-4">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Financial Snapshot</label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Historical financials, projections, key metrics, unit economics
+                          </p>
+                          <Textarea
+                            value={selectedDraft.financial_snapshot || ""}
+                            onChange={(e) => handleFieldChange("financial_snapshot", e.target.value)}
+                            placeholder="FY2023 Actuals:
+- Revenue: $50M (45% YoY growth)
+- Gross Profit: $40M (80% margin)
+- EBITDA: -$5M (investing in growth)
+- ARR: $55M
+- Customers: 500 enterprise clients
+
+FY2024 Projections:
+- Revenue: $75M (50% growth)
+- Path to profitability by FY2025..."
+                            rows={10}
+                          />
+                        </div>
+                        <div>
                           <label className="text-sm font-medium mb-2 block">Market Analysis</label>
                           <Textarea
                             value={selectedDraft.market_analysis || ""}
                             onChange={(e) => handleFieldChange("market_analysis", e.target.value)}
-                            placeholder="Market size, growth trends, competitive landscape, regulatory environment..."
-                            rows={6}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Financial Highlights</label>
-                          <Textarea
-                            value={selectedDraft.financial_highlights || ""}
-                            onChange={(e) => handleFieldChange("financial_highlights", e.target.value)}
-                            placeholder="Revenue, EBITDA, margins, growth rates, key financial metrics..."
+                            placeholder="TAM: $50B, growing 25% annually
+SAM: $15B (enterprise segment)
+SOM: $3B (target geography)..."
                             rows={6}
                           />
                         </div>
@@ -311,7 +421,10 @@ export function ICDocumentGenerator() {
                           <Textarea
                             value={selectedDraft.key_risks || ""}
                             onChange={(e) => handleFieldChange("key_risks", e.target.value)}
-                            placeholder="Key investment risks and proposed mitigants..."
+                            placeholder="1. Customer Concentration: Top 3 = 25% revenue
+   - Mitigant: Pipeline of 50+ enterprise deals
+2. Competitive Pressure: Large tech entering market
+   - Mitigant: 3-year product lead, switching costs..."
                             rows={6}
                           />
                         </div>
@@ -320,7 +433,11 @@ export function ICDocumentGenerator() {
                           <Textarea
                             value={selectedDraft.deal_terms || ""}
                             onChange={(e) => handleFieldChange("deal_terms", e.target.value)}
-                            placeholder="Valuation, transaction structure, governance, key terms..."
+                            placeholder="Investment: $50M Series C
+Valuation: $300M pre-money (6x ARR)
+Structure: Preferred equity with 1x liq pref
+Board Seat: Yes
+Governance: Standard protective provisions..."
                             rows={6}
                           />
                         </div>
