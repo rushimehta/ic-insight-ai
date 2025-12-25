@@ -76,6 +76,60 @@ export type Database = {
         }
         Relationships: []
       }
+      deals: {
+        Row: {
+          company_name: string
+          created_at: string
+          created_by: string | null
+          deal_name: string
+          deal_size: string | null
+          deal_team: Json | null
+          description: string | null
+          ic_date: string | null
+          id: string
+          lead_partner: string | null
+          metadata: Json | null
+          sector: Database["public"]["Enums"]["sector_type"]
+          stage: Database["public"]["Enums"]["deal_stage"]
+          target_close_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          created_by?: string | null
+          deal_name: string
+          deal_size?: string | null
+          deal_team?: Json | null
+          description?: string | null
+          ic_date?: string | null
+          id?: string
+          lead_partner?: string | null
+          metadata?: Json | null
+          sector: Database["public"]["Enums"]["sector_type"]
+          stage?: Database["public"]["Enums"]["deal_stage"]
+          target_close_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          created_by?: string | null
+          deal_name?: string
+          deal_size?: string | null
+          deal_team?: Json | null
+          description?: string | null
+          ic_date?: string | null
+          id?: string
+          lead_partner?: string | null
+          metadata?: Json | null
+          sector?: Database["public"]["Enums"]["sector_type"]
+          stage?: Database["public"]["Enums"]["deal_stage"]
+          target_close_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       document_chunks: {
         Row: {
           chunk_index: number
@@ -579,6 +633,15 @@ export type Database = {
     }
     Enums: {
       app_role: "deal_team" | "ic_member" | "ic_chairman" | "admin"
+      deal_stage:
+        | "sourcing"
+        | "initial_review"
+        | "due_diligence"
+        | "ic_scheduled"
+        | "ic_complete"
+        | "approved"
+        | "closed"
+        | "passed"
       sector_type:
         | "technology"
         | "healthcare"
@@ -717,6 +780,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["deal_team", "ic_member", "ic_chairman", "admin"],
+      deal_stage: [
+        "sourcing",
+        "initial_review",
+        "due_diligence",
+        "ic_scheduled",
+        "ic_complete",
+        "approved",
+        "closed",
+        "passed",
+      ],
       sector_type: [
         "technology",
         "healthcare",
