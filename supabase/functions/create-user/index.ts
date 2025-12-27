@@ -1,8 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  deal_team: "Deal Team",
+  ic_member: "IC Member", 
+  ic_chairman: "IC Chairman",
+  admin: "Admin",
 };
 
 Deno.serve(async (req) => {
@@ -13,8 +21,8 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
     
-    // Create admin client with service role
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
@@ -52,7 +60,9 @@ Deno.serve(async (req) => {
       throw new Error("Email is required");
     }
 
-    // Create the user with a random password (they'll reset it via email)
+    console.log(`Creating user: ${email}`);
+
+    // Create the user with a random password
     const tempPassword = crypto.randomUUID();
     
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -65,6 +75,7 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
+      console.error("Error creating user:", createError);
       throw createError;
     }
 
@@ -73,6 +84,7 @@ Deno.serve(async (req) => {
     }
 
     const userId = newUser.user.id;
+    console.log(`User created with ID: ${userId}`);
 
     // Add roles
     if (newUserRoles && newUserRoles.length > 0) {
@@ -106,14 +118,67 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Send password reset email so user can set their own password
-    const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+    // Generate password reset link
+    const { data: linkData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
       type: "recovery",
       email,
     });
 
     if (resetError) {
-      console.error("Error sending reset email:", resetError);
+      console.error("Error generating reset link:", resetError);
+    }
+
+    // Send welcome email with Resend if configured
+    if (resendApiKey && linkData?.properties?.action_link) {
+      try {
+        const resend = new Resend(resendApiKey);
+        
+        const roleLabels = (newUserRoles || []).map((r: string) => ROLE_LABELS[r] || r).join(", ");
+        
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to IC Platform</h1>
+            </div>
+            <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                Hi ${fullName || "there"},
+              </p>
+              <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">
+                You've been invited to join the IC Platform. Your account has been created with the following access:
+              </p>
+              <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <p style="font-size: 12px; color: #9ca3af; margin: 0 0 8px 0; text-transform: uppercase;">Assigned Roles</p>
+                <p style="font-size: 14px; color: #374151; margin: 0;">
+                  ${roleLabels || "Standard User"}
+                </p>
+              </div>
+              <div style="text-align: center; margin-top: 24px;">
+                <a href="${linkData.properties.action_link}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                  Set Your Password
+                </a>
+              </div>
+              <p style="font-size: 12px; color: #9ca3af; text-align: center; margin-top: 24px;">
+                This link will expire in 24 hours. If you didn't expect this invitation, please ignore this email.
+              </p>
+            </div>
+          </div>
+        `;
+
+        await resend.emails.send({
+          from: "IC Platform <onboarding@resend.dev>",
+          to: [email],
+          subject: "Welcome to IC Platform - Set Up Your Account",
+          html: emailHtml,
+        });
+
+        console.log(`Welcome email sent to ${email}`);
+      } catch (emailError) {
+        console.error("Error sending email:", emailError);
+        // Don't throw - user was still created
+      }
+    } else {
+      console.log("Resend not configured or no action link, skipping email");
     }
 
     return new Response(
