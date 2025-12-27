@@ -15,7 +15,8 @@ import {
   Shield,
   BarChart3,
   Kanban,
-  FolderOpen
+  FolderOpen,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { UserSettingsDialog } from "@/components/profile/UserSettingsDialog";
 
 interface NavItem {
   icon: React.ElementType;
@@ -57,6 +59,7 @@ interface SidebarProps {
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const { user, signOut } = useAuth();
   const { roles, isChairmanOrAdmin } = useUserPermissions();
 
@@ -147,6 +150,10 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               )}
             </div>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setShowSettings(true)}>
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
               <LogOut className="w-4 h-4 mr-2" />
               Sign out
@@ -163,6 +170,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           <ChevronLeft className={cn("w-5 h-5 transition-transform", collapsed && "rotate-180")} />
         </Button>
       </div>
+
+      <UserSettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </aside>
   );
 }
