@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Loader2, Mail, Lock, User, ArrowRight, Shield } from "lucide-react";
 import { z } from "zod";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
@@ -18,6 +20,12 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  
+  // MFA state
+  const [showMFA, setShowMFA] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [isVerifyingMFA, setIsVerifyingMFA] = useState(false);
   
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
@@ -48,16 +56,30 @@ export default function Auth() {
     
     try {
       if (isLogin) {
-        const { error } = await signIn(email, password);
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
         if (error) {
           if (error.message.includes("Invalid login credentials")) {
             toast.error("Invalid email or password");
           } else {
             toast.error(error.message);
           }
-        } else {
-          toast.success("Welcome back!");
-          navigate("/");
+        } else if (data?.session) {
+          // Check if MFA is required
+          const { data: factorsData } = await supabase.auth.mfa.listFactors();
+          const verifiedFactors = factorsData?.totp?.filter(f => f.status === "verified") || [];
+          
+          if (verifiedFactors.length > 0) {
+            // MFA is required
+            setMfaFactorId(verifiedFactors[0].id);
+            setShowMFA(true);
+          } else {
+            toast.success("Welcome back!");
+            navigate("/");
+          }
         }
       } else {
         const { error } = await signUp(email, password, fullName);
@@ -78,6 +100,109 @@ export default function Auth() {
       setIsLoading(false);
     }
   };
+
+  const handleMFAVerify = async () => {
+    if (!mfaFactorId || mfaCode.length !== 6) return;
+
+    setIsVerifyingMFA(true);
+    try {
+      // Create a challenge
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: mfaFactorId,
+      });
+
+      if (challengeError) throw challengeError;
+
+      // Verify the challenge
+      const { data, error } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: challengeData.id,
+        code: mfaCode,
+      });
+
+      if (error) throw error;
+
+      toast.success("Welcome back!");
+      navigate("/");
+    } catch (error: any) {
+      console.error("MFA verification error:", error);
+      toast.error(error.message || "Invalid verification code");
+      setMfaCode("");
+    } finally {
+      setIsVerifyingMFA(false);
+    }
+  };
+
+  const handleBackFromMFA = async () => {
+    await supabase.auth.signOut();
+    setShowMFA(false);
+    setMfaFactorId(null);
+    setMfaCode("");
+  };
+
+  // MFA verification screen
+  if (showMFA) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8 opacity-0 animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center mx-auto mb-4 shadow-glow">
+              <Shield className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold">Two-Factor Authentication</h1>
+            <p className="text-muted-foreground mt-2">
+              Enter the 6-digit code from your authenticator app
+            </p>
+          </div>
+
+          <div className="glass rounded-2xl p-8 opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
+            <div className="space-y-6">
+              <div className="flex justify-center">
+                <InputOTP
+                  maxLength={6}
+                  value={mfaCode}
+                  onChange={setMfaCode}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              <Button
+                onClick={handleMFAVerify}
+                variant="glow"
+                className="w-full"
+                disabled={mfaCode.length !== 6 || isVerifyingMFA}
+              >
+                {isVerifyingMFA ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    Verify
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={handleBackFromMFA}
+              >
+                Back to Sign In
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
