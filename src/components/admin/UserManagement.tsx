@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { UserPlus, Mail, User, Loader2, Check, AlertCircle, Eye, Trash2, UserX, RefreshCw } from "lucide-react";
+import { UserPlus, Mail, User, Loader2, Check, AlertCircle, Eye, Trash2, UserX, RefreshCw, Shield, Globe, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +23,7 @@ const ROLES = [
 ] as const;
 
 type AppRole = "deal_team" | "ic_member" | "ic_chairman" | "admin";
+type SectorType = "technology" | "healthcare" | "financial_services" | "consumer_retail" | "industrials" | "energy" | "real_estate" | "media_entertainment" | "infrastructure";
 
 interface UserInfo {
   id: string;
@@ -32,20 +34,33 @@ interface UserInfo {
   roles: string[];
 }
 
+interface UserSectorInfo {
+  user_id: string;
+  sectors: string[];
+}
+
 export function UserManagement() {
   const { activeSectors } = useSectors();
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [allSectorsAccess, setAllSectorsAccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [users, setUsers] = useState<UserInfo[]>([]);
+  const [userSectors, setUserSectors] = useState<Record<string, string[]>>({});
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [activeTab, setActiveTab] = useState("add");
+  const [editingUser, setEditingUser] = useState<UserInfo | null>(null);
+  const [editRoles, setEditRoles] = useState<AppRole[]>([]);
+  const [editSectors, setEditSectors] = useState<string[]>([]);
+  const [editAllSectors, setEditAllSectors] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   useEffect(() => {
     fetchUsers();
+    fetchUserSectors();
   }, []);
 
   const fetchUsers = async () => {
@@ -64,6 +79,27 @@ export function UserManagement() {
     }
   };
 
+  const fetchUserSectors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("user_sectors")
+        .select("user_id, sector");
+
+      if (error) throw error;
+      
+      const sectorsByUser: Record<string, string[]> = {};
+      data?.forEach(row => {
+        if (!sectorsByUser[row.user_id]) {
+          sectorsByUser[row.user_id] = [];
+        }
+        sectorsByUser[row.user_id].push(row.sector);
+      });
+      setUserSectors(sectorsByUser);
+    } catch (error) {
+      console.error("Error fetching user sectors:", error);
+    }
+  };
+
   const handleRoleToggle = (role: AppRole) => {
     setSelectedRoles(prev =>
       prev.includes(role)
@@ -78,6 +114,15 @@ export function UserManagement() {
         ? prev.filter(s => s !== sector)
         : [...prev, sector]
     );
+  };
+
+  const handleAllSectorsToggle = (checked: boolean) => {
+    setAllSectorsAccess(checked);
+    if (checked) {
+      setSelectedSectors(activeSectors.map(s => s.name));
+    } else {
+      setSelectedSectors([]);
+    }
   };
 
   const handleAddUser = async () => {
@@ -110,8 +155,10 @@ export function UserManagement() {
       setFullName("");
       setSelectedRoles([]);
       setSelectedSectors([]);
+      setAllSectorsAccess(false);
       setShowEmailPreview(false);
       fetchUsers();
+      fetchUserSectors();
     } catch (error: any) {
       console.error("Error adding user:", error);
       toast.error(error.message || "Failed to add user");
@@ -149,9 +196,90 @@ export function UserManagement() {
 
       toast.success("User deleted successfully");
       fetchUsers();
+      fetchUserSectors();
     } catch (error: any) {
       console.error("Error deleting user:", error);
       toast.error(error.message || "Failed to delete user");
+    }
+  };
+
+  const openEditDialog = (user: UserInfo) => {
+    setEditingUser(user);
+    setEditRoles(user.roles as AppRole[]);
+    const userSectorList = userSectors[user.id] || [];
+    setEditSectors(userSectorList);
+    setEditAllSectors(userSectorList.length === activeSectors.length && activeSectors.length > 0);
+  };
+
+  const handleEditRoleToggle = (role: AppRole) => {
+    setEditRoles(prev =>
+      prev.includes(role)
+        ? prev.filter(r => r !== role)
+        : [...prev, role]
+    );
+  };
+
+  const handleEditSectorToggle = (sector: string) => {
+    setEditSectors(prev =>
+      prev.includes(sector)
+        ? prev.filter(s => s !== sector)
+        : [...prev, sector]
+    );
+  };
+
+  const handleEditAllSectorsToggle = (checked: boolean) => {
+    setEditAllSectors(checked);
+    if (checked) {
+      setEditSectors(activeSectors.map(s => s.name));
+    } else {
+      setEditSectors([]);
+    }
+  };
+
+  const handleSaveUserEdit = async () => {
+    if (!editingUser) return;
+
+    setIsSavingEdit(true);
+    try {
+      // Update roles - delete existing and add new
+      await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", editingUser.id);
+
+      if (editRoles.length > 0) {
+        await supabase
+          .from("user_roles")
+          .insert(editRoles.map(role => ({
+            user_id: editingUser.id,
+            role: role
+          })));
+      }
+
+      // Update sectors - delete existing and add new
+      await supabase
+        .from("user_sectors")
+        .delete()
+        .eq("user_id", editingUser.id);
+
+      if (editSectors.length > 0) {
+        await supabase
+          .from("user_sectors")
+          .insert(editSectors.map(sector => ({
+            user_id: editingUser.id,
+            sector: sector as SectorType
+          })));
+      }
+
+      toast.success("User updated successfully");
+      setEditingUser(null);
+      fetchUsers();
+      fetchUserSectors();
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      toast.error(error.message || "Failed to update user");
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -177,7 +305,7 @@ export function UserManagement() {
         <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
           <p style="font-size: 12px; color: #9ca3af; margin: 0 0 8px 0; text-transform: uppercase;">Sector Access</p>
           <p style="font-size: 14px; color: #374151; margin: 0;">
-            ${selectedSectors.map(s => activeSectors.find(sec => sec.name === s)?.display_name || s).join(", ")}
+            ${allSectorsAccess ? "All Sectors" : selectedSectors.map(s => activeSectors.find(sec => sec.name === s)?.display_name || s).join(", ")}
           </p>
         </div>
         ` : ""}
@@ -204,6 +332,10 @@ export function UserManagement() {
           <TabsTrigger value="manage" className="flex items-center gap-2">
             <User className="w-4 h-4" />
             Manage Users
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Roles Overview
           </TabsTrigger>
         </TabsList>
 
@@ -279,10 +411,23 @@ export function UserManagement() {
 
               {/* Sectors */}
               <div className="space-y-3">
-                <Label>Sector Access</Label>
-                <p className="text-xs text-muted-foreground">
-                  Select which sectors this user can access. Admin and IC Chairman have access to all sectors.
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Sector Access</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Select which sectors this user can access. Admin and IC Chairman have access to all sectors by default.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-muted-foreground" />
+                    <Label htmlFor="all-sectors" className="text-sm font-normal">All Sectors</Label>
+                    <Switch
+                      id="all-sectors"
+                      checked={allSectorsAccess}
+                      onCheckedChange={handleAllSectorsToggle}
+                    />
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {activeSectors.map((sector) => (
                     <div
@@ -291,8 +436,8 @@ export function UserManagement() {
                         selectedSectors.includes(sector.name)
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border hover:border-primary/50"
-                      }`}
-                      onClick={() => handleSectorToggle(sector.name)}
+                      } ${allSectorsAccess ? "opacity-50 pointer-events-none" : ""}`}
+                      onClick={() => !allSectorsAccess && handleSectorToggle(sector.name)}
                     >
                       {selectedSectors.includes(sector.name) && <Check className="w-3 h-3" />}
                       {sector.display_name}
@@ -339,10 +484,10 @@ export function UserManagement() {
                     User Management
                   </CardTitle>
                   <CardDescription>
-                    View, deactivate, or delete existing users
+                    View, edit roles/sectors, deactivate, or delete existing users
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchUsers}>
+                <Button variant="outline" size="sm" onClick={() => { fetchUsers(); fetchUserSectors(); }}>
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Refresh
                 </Button>
@@ -378,18 +523,34 @@ export function UserManagement() {
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground">{user.email}</p>
-                            {user.roles.length > 0 && (
-                              <div className="flex gap-1 mt-1">
-                                {user.roles.map(role => (
-                                  <Badge key={role} variant="outline" className="text-xs capitalize">
-                                    {role.replace("_", " ")}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {user.roles.length > 0 && user.roles.map(role => (
+                                <Badge key={role} variant="outline" className="text-xs capitalize">
+                                  {role.replace("_", " ")}
+                                </Badge>
+                              ))}
+                              {userSectors[user.id]?.length === activeSectors.length && activeSectors.length > 0 ? (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Globe className="w-3 h-3 mr-1" />
+                                  All Sectors
+                                </Badge>
+                              ) : userSectors[user.id]?.length > 0 ? (
+                                <Badge variant="secondary" className="text-xs">
+                                  {userSectors[user.id].length} sector(s)
+                                </Badge>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditDialog(user)}
+                          >
+                            <Pencil className="w-4 h-4 mr-1" />
+                            Edit
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -431,7 +592,182 @@ export function UserManagement() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="roles">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Roles Overview
+              </CardTitle>
+              <CardDescription>
+                View all available roles and their permissions
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                {ROLES.map((role) => {
+                  const usersWithRole = users.filter(u => u.roles.includes(role.value));
+                  return (
+                    <div key={role.value} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-5 h-5 text-primary" />
+                          <h3 className="font-semibold">{role.label}</h3>
+                        </div>
+                        <Badge variant="secondary">{usersWithRole.length} user(s)</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{role.description}</p>
+                      
+                      {/* Role-specific permissions */}
+                      <div className="space-y-2 pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground uppercase">Permissions</p>
+                        <div className="flex flex-wrap gap-1">
+                          {role.value === "admin" && (
+                            <>
+                              <Badge variant="outline" className="text-xs">Full Access</Badge>
+                              <Badge variant="outline" className="text-xs">User Management</Badge>
+                              <Badge variant="outline" className="text-xs">All Sectors</Badge>
+                            </>
+                          )}
+                          {role.value === "ic_chairman" && (
+                            <>
+                              <Badge variant="outline" className="text-xs">IC Notes</Badge>
+                              <Badge variant="outline" className="text-xs">Meeting Management</Badge>
+                              <Badge variant="outline" className="text-xs">All Sectors</Badge>
+                            </>
+                          )}
+                          {role.value === "ic_member" && (
+                            <>
+                              <Badge variant="outline" className="text-xs">View IC Meetings</Badge>
+                              <Badge variant="outline" className="text-xs">Sector-Based Access</Badge>
+                            </>
+                          )}
+                          {role.value === "deal_team" && (
+                            <>
+                              <Badge variant="outline" className="text-xs">Manage Deals</Badge>
+                              <Badge variant="outline" className="text-xs">Upload Documents</Badge>
+                              <Badge variant="outline" className="text-xs">Sector-Based Access</Badge>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Users with this role */}
+                      {usersWithRole.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t">
+                          <p className="text-xs font-medium text-muted-foreground uppercase">Users</p>
+                          <div className="flex flex-wrap gap-1">
+                            {usersWithRole.slice(0, 5).map(user => (
+                              <Badge key={user.id} variant="secondary" className="text-xs">
+                                {user.full_name || user.email.split("@")[0]}
+                              </Badge>
+                            ))}
+                            {usersWithRole.length > 5 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{usersWithRole.length - 5} more
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5" />
+              Edit User
+            </DialogTitle>
+            <DialogDescription>
+              Update roles and sector access for {editingUser?.full_name || editingUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Edit Roles */}
+            <div className="space-y-3">
+              <Label>Roles</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {ROLES.map((role) => (
+                  <div
+                    key={role.value}
+                    className={`flex items-center space-x-2 rounded-lg border p-2 cursor-pointer transition-colors ${
+                      editRoles.includes(role.value)
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                    onClick={() => handleEditRoleToggle(role.value)}
+                  >
+                    <Checkbox
+                      checked={editRoles.includes(role.value)}
+                      onCheckedChange={() => handleEditRoleToggle(role.value)}
+                    />
+                    <span className="text-sm">{role.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Edit Sectors */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Sector Access</Label>
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-muted-foreground" />
+                  <Label htmlFor="edit-all-sectors" className="text-sm font-normal">All Sectors</Label>
+                  <Switch
+                    id="edit-all-sectors"
+                    checked={editAllSectors}
+                    onCheckedChange={handleEditAllSectorsToggle}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {activeSectors.map((sector) => (
+                  <div
+                    key={sector.id}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer transition-colors text-sm ${
+                      editSectors.includes(sector.name)
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border hover:border-primary/50"
+                    } ${editAllSectors ? "opacity-50 pointer-events-none" : ""}`}
+                    onClick={() => !editAllSectors && handleEditSectorToggle(sector.name)}
+                  >
+                    {editSectors.includes(sector.name) && <Check className="w-3 h-3" />}
+                    {sector.display_name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingUser(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveUserEdit} disabled={isSavingEdit}>
+              {isSavingEdit ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Email Preview Dialog */}
       <Dialog open={showEmailPreview} onOpenChange={setShowEmailPreview}>
