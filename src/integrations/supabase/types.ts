@@ -171,6 +171,54 @@ export type Database = {
           },
         ]
       }
+      document_sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          files_failed: number | null
+          files_synced: number | null
+          id: string
+          metadata: Json | null
+          source: string
+          started_at: string
+          status: string
+          sync_type: string
+          synced_by: string | null
+          total_size_bytes: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          files_failed?: number | null
+          files_synced?: number | null
+          id?: string
+          metadata?: Json | null
+          source?: string
+          started_at?: string
+          status?: string
+          sync_type?: string
+          synced_by?: string | null
+          total_size_bytes?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          files_failed?: number | null
+          files_synced?: number | null
+          id?: string
+          metadata?: Json | null
+          source?: string
+          started_at?: string
+          status?: string
+          sync_type?: string
+          synced_by?: string | null
+          total_size_bytes?: number | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           content: string | null
@@ -604,6 +652,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sync_file_details: {
+        Row: {
+          created_at: string
+          destination_path: string | null
+          error_message: string | null
+          file_path: string | null
+          file_size: number | null
+          file_type: string | null
+          filename: string
+          id: string
+          source_url: string | null
+          status: string
+          sync_log_id: string
+        }
+        Insert: {
+          created_at?: string
+          destination_path?: string | null
+          error_message?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          filename: string
+          id?: string
+          source_url?: string | null
+          status?: string
+          sync_log_id: string
+        }
+        Update: {
+          created_at?: string
+          destination_path?: string | null
+          error_message?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          filename?: string
+          id?: string
+          source_url?: string | null
+          status?: string
+          sync_log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_file_details_sync_log_id_fkey"
+            columns: ["sync_log_id"]
+            isOneToOne: false
+            referencedRelation: "document_sync_logs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       usage_analytics: {
         Row: {
