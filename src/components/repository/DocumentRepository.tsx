@@ -1,15 +1,30 @@
 import { useState, useMemo } from "react";
-import { FolderOpen, FileText, Calendar, Building2, Search, Filter, ChevronRight, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { FolderOpen, FileText, Calendar, Building2, Search, ChevronRight, Loader2, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useSectors } from "@/hooks/useSectors";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { toast } from "sonner";
+
+interface Document {
+  id: string;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  status: string;
+  deal_name?: string | null;
+  ic_date?: string | null;
+  created_at: string;
+  content?: string | null;
+  sector?: string | null;
+}
 
 const formatFileSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
@@ -24,6 +39,47 @@ export function DocumentRepository() {
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [selectedSector, setSelectedSector] = useState<string>("all");
   const [expandedSectors, setExpandedSectors] = useState<Record<string, boolean>>({});
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [documentContent, setDocumentContent] = useState<string | null>(null);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+
+  const handleViewDocument = async (doc: Document) => {
+    setSelectedDocument(doc);
+    setIsLoadingContent(true);
+    setDocumentContent(null);
+
+    try {
+      // First try to get the document content directly
+      const { data: docData } = await supabase
+        .from("documents")
+        .select("content")
+        .eq("id", doc.id)
+        .single();
+
+      if (docData?.content) {
+        setDocumentContent(docData.content);
+      } else {
+        // If no direct content, try to get from chunks
+        const { data: chunks } = await supabase
+          .from("document_chunks")
+          .select("content, chunk_index")
+          .eq("document_id", doc.id)
+          .order("chunk_index", { ascending: true });
+
+        if (chunks && chunks.length > 0) {
+          setDocumentContent(chunks.map(c => c.content).join("\n\n---\n\n"));
+        } else {
+          setDocumentContent("No content available for this document.");
+        }
+      }
+    } catch (error) {
+      console.error("Error loading document:", error);
+      toast.error("Failed to load document content");
+      setDocumentContent("Error loading document content.");
+    } finally {
+      setIsLoadingContent(false);
+    }
+  };
 
   // Get unique years from documents
   const years = useMemo(() => {
@@ -198,6 +254,7 @@ export function DocumentRepository() {
                               <div
                                 key={doc.id}
                                 className="flex items-center justify-between p-2 rounded-lg hover:bg-secondary/50 transition-colors group cursor-pointer"
+                                onClick={() => handleViewDocument(doc as Document)}
                               >
                                 <div className="flex items-center gap-2">
                                   <FileText className="w-4 h-4 text-muted-foreground" />
@@ -210,10 +267,11 @@ export function DocumentRepository() {
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                   <span>{formatFileSize(doc.file_size)}</span>
                                   <span>•</span>
                                   <span>{format(new Date(doc.created_at), 'MMM d, yyyy')}</span>
+                                  <Eye className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
                                 </div>
                               </div>
                             ))}
@@ -228,6 +286,45 @@ export function DocumentRepository() {
           </ScrollArea>
         )}
       </div>
+
+      {/* Document Viewer Dialog */}
+      <Dialog open={!!selectedDocument} onOpenChange={() => setSelectedDocument(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              {selectedDocument?.filename}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Document metadata */}
+            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+              {selectedDocument?.deal_name && (
+                <Badge variant="secondary">{selectedDocument.deal_name}</Badge>
+              )}
+              {selectedDocument?.file_size && (
+                <span>{formatFileSize(selectedDocument.file_size)}</span>
+              )}
+              {selectedDocument?.created_at && (
+                <span>{format(new Date(selectedDocument.created_at), 'PPP')}</span>
+              )}
+            </div>
+            
+            {/* Content */}
+            <ScrollArea className="h-[50vh] border rounded-lg p-4 bg-secondary/20">
+              {isLoadingContent ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                  {documentContent}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
