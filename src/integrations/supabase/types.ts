@@ -488,10 +488,15 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string
           department: string | null
           full_name: string | null
           id: string
+          job_title: string | null
+          linkedin_url: string | null
+          location: string | null
+          phone: string | null
           primary_sector: Database["public"]["Enums"]["sector_type"] | null
           role: string | null
           team: string | null
@@ -499,10 +504,15 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           department?: string | null
           full_name?: string | null
           id: string
+          job_title?: string | null
+          linkedin_url?: string | null
+          location?: string | null
+          phone?: string | null
           primary_sector?: Database["public"]["Enums"]["sector_type"] | null
           role?: string | null
           team?: string | null
@@ -510,10 +520,15 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           department?: string | null
           full_name?: string | null
           id?: string
+          job_title?: string | null
+          linkedin_url?: string | null
+          location?: string | null
+          phone?: string | null
           primary_sector?: Database["public"]["Enums"]["sector_type"] | null
           role?: string | null
           team?: string | null
