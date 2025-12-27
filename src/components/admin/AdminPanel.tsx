@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { Users, Shield, Building2, Search, Plus, Trash2, Loader2, Save, AlertTriangle, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Users, Shield, Building2, Search, Loader2, AlertTriangle, UserPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -12,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useSectors } from "@/hooks/useSectors";
 import { SectorManagement } from "@/components/admin/SectorManagement";
+import { UserManagement } from "@/components/admin/UserManagement";
 import type { AppRole, SectorType } from "@/hooks/useUserPermissions";
 
 interface UserProfile {
@@ -179,6 +178,10 @@ export function AdminPanel() {
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Users
+          </TabsTrigger>
+          <TabsTrigger value="add-user" className="flex items-center gap-2">
+            <UserPlus className="w-4 h-4" />
+            Add User
           </TabsTrigger>
           <TabsTrigger value="sectors" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
@@ -398,6 +401,10 @@ export function AdminPanel() {
               )}
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="add-user">
+          <UserManagement />
         </TabsContent>
 
         <TabsContent value="sectors">
