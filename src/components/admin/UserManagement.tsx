@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { UserPlus, Mail, User, Loader2, Check, AlertCircle, Eye, Trash2, UserX, RefreshCw, Shield, Globe, Pencil } from "lucide-react";
+import { UserPlus, Mail, User, Loader2, Check, AlertCircle, Eye, Trash2, UserX, RefreshCw, Shield, Globe, Pencil, Phone, MapPin, Linkedin, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +26,17 @@ const ROLES = [
 type AppRole = "deal_team" | "ic_member" | "ic_chairman" | "admin";
 type SectorType = "technology" | "healthcare" | "financial_services" | "consumer_retail" | "industrials" | "energy" | "real_estate" | "media_entertainment" | "infrastructure";
 
+interface UserProfile {
+  id: string;
+  full_name: string | null;
+  job_title: string | null;
+  department: string | null;
+  phone: string | null;
+  location: string | null;
+  bio: string | null;
+  linkedin_url: string | null;
+}
+
 interface UserInfo {
   id: string;
   email: string;
@@ -32,6 +44,7 @@ interface UserInfo {
   created_at: string;
   is_active: boolean;
   roles: string[];
+  profile?: UserProfile;
 }
 
 interface UserSectorInfo {
@@ -43,6 +56,10 @@ export function UserManagement() {
   const { activeSectors } = useSectors();
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [department, setDepartment] = useState("");
+  const [phone, setPhone] = useState("");
+  const [location, setLocation] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [allSectorsAccess, setAllSectorsAccess] = useState(false);
@@ -57,6 +74,14 @@ export function UserManagement() {
   const [editSectors, setEditSectors] = useState<string[]>([]);
   const [editAllSectors, setEditAllSectors] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  
+  // Edit profile fields
+  const [editJobTitle, setEditJobTitle] = useState("");
+  const [editDepartment, setEditDepartment] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editBio, setEditBio] = useState("");
+  const [editLinkedin, setEditLinkedin] = useState("");
 
   useEffect(() => {
     fetchUsers();
@@ -71,7 +96,28 @@ export function UserManagement() {
       });
 
       if (error) throw error;
-      setUsers(data?.users || []);
+      
+      // Fetch profiles for all users
+      const userIds = data?.users?.map((u: any) => u.id) || [];
+      let profiles: Record<string, UserProfile> = {};
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, full_name, job_title, department, phone, location, bio, linkedin_url")
+          .in("id", userIds);
+        
+        profilesData?.forEach((p: any) => {
+          profiles[p.id] = p;
+        });
+      }
+      
+      const usersWithProfiles = (data?.users || []).map((u: any) => ({
+        ...u,
+        profile: profiles[u.id] || null
+      }));
+      
+      setUsers(usersWithProfiles);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {
@@ -145,6 +191,10 @@ export function UserManagement() {
           fullName: fullName.trim(),
           roles: selectedRoles,
           sectors: selectedSectors,
+          jobTitle: jobTitle.trim(),
+          department: department.trim(),
+          phone: phone.trim(),
+          location: location.trim(),
         },
       });
 
@@ -153,6 +203,10 @@ export function UserManagement() {
       toast.success(`Invitation sent to ${email}`);
       setEmail("");
       setFullName("");
+      setJobTitle("");
+      setDepartment("");
+      setPhone("");
+      setLocation("");
       setSelectedRoles([]);
       setSelectedSectors([]);
       setAllSectorsAccess(false);
@@ -209,6 +263,14 @@ export function UserManagement() {
     const userSectorList = userSectors[user.id] || [];
     setEditSectors(userSectorList);
     setEditAllSectors(userSectorList.length === activeSectors.length && activeSectors.length > 0);
+    
+    // Set profile fields
+    setEditJobTitle(user.profile?.job_title || "");
+    setEditDepartment(user.profile?.department || "");
+    setEditPhone(user.profile?.phone || "");
+    setEditLocation(user.profile?.location || "");
+    setEditBio(user.profile?.bio || "");
+    setEditLinkedin(user.profile?.linkedin_url || "");
   };
 
   const handleEditRoleToggle = (role: AppRole) => {
@@ -270,6 +332,19 @@ export function UserManagement() {
             sector: sector as SectorType
           })));
       }
+
+      // Update profile fields
+      await supabase
+        .from("profiles")
+        .update({
+          job_title: editJobTitle || null,
+          department: editDepartment || null,
+          phone: editPhone || null,
+          location: editLocation || null,
+          bio: editBio || null,
+          linkedin_url: editLinkedin || null,
+        })
+        .eq("id", editingUser.id);
 
       toast.success("User updated successfully");
       setEditingUser(null);
@@ -351,33 +426,97 @@ export function UserManagement() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* User Info */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="user@company.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-9"
-                    />
+              {/* Basic Info */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Basic Information
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address *</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="user@company.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="fullName"
+                        placeholder="John Smith"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              </div>
+
+              {/* Profile Fields */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" />
+                  Profile Details (Optional)
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="jobTitle">Job Title</Label>
+                    <div className="relative">
+                      <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="jobTitle"
+                        placeholder="Senior Analyst"
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Department</Label>
                     <Input
-                      id="fullName"
-                      placeholder="John Smith"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="pl-9"
+                      id="department"
+                      placeholder="Investment Team"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="phone"
+                        placeholder="+1 555-123-4567"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="location"
+                        placeholder="New York, NY"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -523,6 +662,9 @@ export function UserManagement() {
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground">{user.email}</p>
+                            {user.profile?.job_title && (
+                              <p className="text-xs text-muted-foreground">{user.profile.job_title}</p>
+                            )}
                             <div className="flex flex-wrap gap-1 mt-1">
                               {user.roles.length > 0 && user.roles.map(role => (
                                 <Badge key={role} variant="outline" className="text-xs capitalize">
@@ -682,18 +824,99 @@ export function UserManagement() {
 
       {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="w-5 h-5" />
               Edit User
             </DialogTitle>
             <DialogDescription>
-              Update roles and sector access for {editingUser?.full_name || editingUser?.email}
+              Update profile, roles and sector access for {editingUser?.full_name || editingUser?.email}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6 py-4">
+            {/* Profile Fields */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Briefcase className="w-4 h-4" />
+                Profile Details
+              </h4>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-job-title">Job Title</Label>
+                  <div className="relative">
+                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="edit-job-title"
+                      placeholder="Senior Analyst"
+                      value={editJobTitle}
+                      onChange={(e) => setEditJobTitle(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-department">Department</Label>
+                  <Input
+                    id="edit-department"
+                    placeholder="Investment Team"
+                    value={editDepartment}
+                    onChange={(e) => setEditDepartment(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-phone">Phone</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="edit-phone"
+                      placeholder="+1 555-123-4567"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-location">Location</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="edit-location"
+                      placeholder="New York, NY"
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-linkedin">LinkedIn URL</Label>
+                <div className="relative">
+                  <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="edit-linkedin"
+                    placeholder="https://linkedin.com/in/username"
+                    value={editLinkedin}
+                    onChange={(e) => setEditLinkedin(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-bio">Bio</Label>
+                <Textarea
+                  id="edit-bio"
+                  placeholder="Brief professional bio..."
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+
             {/* Edit Roles */}
             <div className="space-y-3">
               <Label>Roles</Label>
