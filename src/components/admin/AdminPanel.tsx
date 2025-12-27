@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Shield, Building2, Search, Loader2, AlertTriangle, UserPlus } from "lucide-react";
+import { Users, Shield, Building2, Search, Loader2, AlertTriangle, UserPlus, Link2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useSectors } from "@/hooks/useSectors";
 import { SectorManagement } from "@/components/admin/SectorManagement";
 import { UserManagement } from "@/components/admin/UserManagement";
+import { SharePointIntegration } from "@/components/integrations/SharePointIntegration";
 import type { AppRole, SectorType } from "@/hooks/useUserPermissions";
 
 interface UserProfile {
@@ -186,6 +187,10 @@ export function AdminPanel() {
           <TabsTrigger value="sectors" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Sectors
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="flex items-center gap-2">
+            <Link2 className="w-4 h-4" />
+            Integrations
           </TabsTrigger>
         </TabsList>
 
@@ -411,6 +416,10 @@ export function AdminPanel() {
           <div className="glass rounded-xl p-6">
             <SectorManagement />
           </div>
+        </TabsContent>
+
+        <TabsContent value="integrations">
+          <SharePointIntegration />
         </TabsContent>
       </Tabs>
     </div>
