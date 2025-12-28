@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
       throw new Error("Only admins can manage users");
     }
 
-    const { action, userId } = await req.json();
+    const { action, userId, email } = await req.json();
 
     switch (action) {
       case "list": {
@@ -146,6 +146,49 @@ Deno.serve(async (req) => {
         console.log(`User ${userId} deleted`);
         return new Response(
           JSON.stringify({ success: true, message: "User deleted" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "reset-mfa": {
+        if (!userId) throw new Error("User ID is required");
+
+        // Unenroll all MFA factors for the user
+        const { data: factors, error: listError } = await supabaseAdmin.auth.admin.mfa.listFactors({
+          userId,
+        });
+
+        if (listError) throw listError;
+
+        // Delete all factors
+        for (const factor of factors?.factors || []) {
+          await supabaseAdmin.auth.admin.mfa.deleteFactor({
+            userId,
+            id: factor.id,
+          });
+        }
+
+        console.log(`MFA reset for user ${userId}`);
+        return new Response(
+          JSON.stringify({ success: true, message: "MFA reset successfully" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "update-email": {
+        if (!userId) throw new Error("User ID is required");
+        if (!email) throw new Error("Email is required");
+
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+          email,
+          email_confirm: true,
+        });
+
+        if (error) throw error;
+
+        console.log(`Email updated for user ${userId}`);
+        return new Response(
+          JSON.stringify({ success: true, message: "Email updated" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
