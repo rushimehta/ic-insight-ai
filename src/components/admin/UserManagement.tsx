@@ -103,6 +103,16 @@ export function UserManagement() {
     label: s.display_name,
   }));
 
+  // Helper to get auth headers for edge function calls
+  const getAuthHeaders = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      throw new Error("Not authenticated");
+    }
+    return { Authorization: `Bearer ${accessToken}` };
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchUserSectors();
@@ -111,8 +121,10 @@ export function UserManagement() {
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
     try {
+      const headers = await getAuthHeaders();
       const { data, error } = await supabase.functions.invoke("manage-users", {
         body: { action: "list" },
+        headers,
       });
 
       if (error) throw error;
@@ -205,6 +217,14 @@ export function UserManagement() {
     setIsSubmitting(true);
 
     try {
+      // Get the current session to include the auth token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
+      if (!accessToken) {
+        throw new Error("Not authenticated");
+      }
+
       const { data, error } = await supabase.functions.invoke("create-user", {
         body: {
           email: email.trim(),
@@ -215,6 +235,9 @@ export function UserManagement() {
           department: department.trim(),
           phone: phone.trim(),
           location: location.trim(),
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
@@ -243,11 +266,13 @@ export function UserManagement() {
 
   const handleDeactivateUser = async (userId: string, currentlyActive: boolean) => {
     try {
+      const headers = await getAuthHeaders();
       const { error } = await supabase.functions.invoke("manage-users", {
         body: { 
           action: currentlyActive ? "deactivate" : "activate",
           userId 
         },
+        headers,
       });
 
       if (error) throw error;
@@ -262,8 +287,10 @@ export function UserManagement() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
+      const headers = await getAuthHeaders();
       const { error } = await supabase.functions.invoke("manage-users", {
         body: { action: "delete", userId },
+        headers,
       });
 
       if (error) throw error;
@@ -297,8 +324,10 @@ export function UserManagement() {
   const handleResetMFA = async (userId: string) => {
     setIsResettingMFA(true);
     try {
+      const headers = await getAuthHeaders();
       const { error } = await supabase.functions.invoke("manage-users", {
         body: { action: "reset-mfa", userId },
+        headers,
       });
 
       if (error) throw error;
@@ -314,8 +343,10 @@ export function UserManagement() {
 
   const handleUpdateEmail = async (userId: string, newEmail: string) => {
     try {
+      const headers = await getAuthHeaders();
       const { error } = await supabase.functions.invoke("manage-users", {
         body: { action: "update-email", userId, email: newEmail },
+        headers,
       });
 
       if (error) throw error;
