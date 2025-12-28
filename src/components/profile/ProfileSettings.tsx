@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserPermissions, SectorType } from "@/hooks/useUserPermissions";
 import { useSectors } from "@/hooks/useSectors";
+import { useLookups } from "@/hooks/useLookups";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { 
   User, 
@@ -22,7 +23,6 @@ import {
   Building2,
   Globe
 } from "lucide-react";
-
 interface ProfileData {
   full_name: string | null;
   job_title: string | null;
@@ -37,6 +37,7 @@ export function ProfileSettings() {
   const { user } = useAuth();
   const { sectors: userSectors } = useUserPermissions();
   const { activeSectors } = useSectors();
+  const { departments, locations } = useLookups();
   
   const [profile, setProfile] = useState<ProfileData>({
     full_name: "",
@@ -211,16 +212,24 @@ export function ProfileSettings() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-              <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="department"
-                  value={profile.department || ""}
-                  onChange={(e) => setProfile(p => ({ ...p, department: e.target.value }))}
-                  placeholder="Investment Team"
-                  className="pl-9"
-                />
-              </div>
+              <Select
+                value={profile.department || ""}
+                onValueChange={(value) => setProfile(p => ({ ...p, department: value }))}
+              >
+                <SelectTrigger>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    <SelectValue placeholder="Select department" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.filter(d => d.is_active).map((dept) => (
+                    <SelectItem key={dept.id} value={dept.name}>
+                      {dept.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
@@ -237,16 +246,24 @@ export function ProfileSettings() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="location"
-                  value={profile.location || ""}
-                  onChange={(e) => setProfile(p => ({ ...p, location: e.target.value }))}
-                  placeholder="New York, NY"
-                  className="pl-9"
-                />
-              </div>
+              <Select
+                value={profile.location || ""}
+                onValueChange={(value) => setProfile(p => ({ ...p, location: value }))}
+              >
+                <SelectTrigger>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <SelectValue placeholder="Select location" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.filter(l => l.is_active).map((loc) => (
+                    <SelectItem key={loc.id} value={loc.name}>
+                      {loc.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="linkedin_url">LinkedIn URL</Label>

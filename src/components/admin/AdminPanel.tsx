@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Shield, Building2, Search, Loader2, AlertTriangle, UserPlus, Link2 } from "lucide-react";
+import { Users, Shield, Building2, Search, Loader2, AlertTriangle, UserPlus, Link2, Settings2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useSectors } from "@/hooks/useSectors";
 import { SectorManagement } from "@/components/admin/SectorManagement";
 import { UserManagement } from "@/components/admin/UserManagement";
+import { LookupManagement } from "@/components/admin/LookupManagement";
 import { SharePointIntegration } from "@/components/integrations/SharePointIntegration";
 import type { AppRole, SectorType } from "@/hooks/useUserPermissions";
 
@@ -175,7 +176,7 @@ export function AdminPanel() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="opacity-0 animate-fade-in" style={{ animationDelay: "50ms" }}>
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Users
@@ -187,6 +188,10 @@ export function AdminPanel() {
           <TabsTrigger value="sectors" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Sectors
+          </TabsTrigger>
+          <TabsTrigger value="lookups" className="flex items-center gap-2">
+            <Settings2 className="w-4 h-4" />
+            Lookups
           </TabsTrigger>
           <TabsTrigger value="integrations" className="flex items-center gap-2">
             <Link2 className="w-4 h-4" />
@@ -415,6 +420,12 @@ export function AdminPanel() {
         <TabsContent value="sectors">
           <div className="glass rounded-xl p-6">
             <SectorManagement />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="lookups">
+          <div className="glass rounded-xl p-6">
+            <LookupManagement />
           </div>
         </TabsContent>
 

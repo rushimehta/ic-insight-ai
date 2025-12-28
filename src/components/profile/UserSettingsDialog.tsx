@@ -3,6 +3,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileSettings } from "./ProfileSettings";
 import { MFASettings } from "./MFASettings";
 import { PasswordChangeSettings } from "./PasswordChangeSettings";
+import { EmailChangeSettings } from "./EmailChangeSettings";
+import { SessionManagement } from "./SessionManagement";
 import { User, Shield, Settings } from "lucide-react";
 
 interface UserSettingsDialogProps {
@@ -39,6 +41,8 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
 
           <TabsContent value="security" className="mt-4 space-y-6">
             <PasswordChangeSettings />
+            <EmailChangeSettings />
+            <SessionManagement />
             <MFASettings />
           </TabsContent>
         </Tabs>
