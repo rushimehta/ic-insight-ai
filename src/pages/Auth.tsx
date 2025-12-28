@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Mail, Lock, User, ArrowRight, Shield } from "lucide-react";
+import { Loader2, Mail, Lock, User, ArrowRight, Shield, KeyRound } from "lucide-react";
 import { z } from "zod";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
@@ -24,8 +24,14 @@ export default function Auth() {
   // MFA state
   const [showMFA, setShowMFA] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [isVerifyingMFA, setIsVerifyingMFA] = useState(false);
+  
+  // Forgot password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
   
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
@@ -38,13 +44,41 @@ export default function Auth() {
       newErrors.email = emailResult.error.errors[0].message;
     }
     
-    const passwordResult = passwordSchema.safeParse(password);
-    if (!passwordResult.success) {
-      newErrors.password = passwordResult.error.errors[0].message;
+    if (!showForgotPassword) {
+      const passwordResult = passwordSchema.safeParse(password);
+      if (!passwordResult.success) {
+        newErrors.password = passwordResult.error.errors[0].message;
+      }
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      setErrors({ email: emailResult.error.errors[0].message });
+      return;
+    }
+    
+    setIsSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?reset=true`,
+      });
+      
+      if (error) throw error;
+      
+      setResetEmailSent(true);
+      toast.success("Password reset email sent!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send reset email");
+    } finally {
+      setIsSendingReset(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,24 +96,61 @@ export default function Auth() {
         });
         
         if (error) {
+          // Check if MFA is required
+          if (error.message.includes("MFA") || error.message.includes("mfa")) {
+            // Need to handle MFA challenge
+            const { data: factorsData } = await supabase.auth.mfa.listFactors();
+            const verifiedFactors = factorsData?.totp?.filter(f => f.status === "verified") || [];
+            
+            if (verifiedFactors.length > 0) {
+              const factorId = verifiedFactors[0].id;
+              // Create challenge
+              const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+                factorId,
+              });
+              
+              if (challengeError) throw challengeError;
+              
+              setMfaFactorId(factorId);
+              setMfaChallengeId(challengeData.id);
+              setShowMFA(true);
+              setIsLoading(false);
+              return;
+            }
+          }
+          
           if (error.message.includes("Invalid login credentials")) {
             toast.error("Invalid email or password");
           } else {
             toast.error(error.message);
           }
         } else if (data?.session) {
-          // Check if MFA is required
-          const { data: factorsData } = await supabase.auth.mfa.listFactors();
-          const verifiedFactors = factorsData?.totp?.filter(f => f.status === "verified") || [];
+          // Check if user has MFA enrolled - if AAL is 1, they might need to verify
+          const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
           
-          if (verifiedFactors.length > 0) {
-            // MFA is required
-            setMfaFactorId(verifiedFactors[0].id);
-            setShowMFA(true);
-          } else {
-            toast.success("Welcome back!");
-            navigate("/");
+          if (aalData?.currentLevel === "aal1" && aalData?.nextLevel === "aal2") {
+            // User has MFA but needs to verify
+            const { data: factorsData } = await supabase.auth.mfa.listFactors();
+            const verifiedFactors = factorsData?.totp?.filter(f => f.status === "verified") || [];
+            
+            if (verifiedFactors.length > 0) {
+              const factorId = verifiedFactors[0].id;
+              const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+                factorId,
+              });
+              
+              if (challengeError) throw challengeError;
+              
+              setMfaFactorId(factorId);
+              setMfaChallengeId(challengeData.id);
+              setShowMFA(true);
+              setIsLoading(false);
+              return;
+            }
           }
+          
+          toast.success("Welcome back!");
+          navigate("/");
         }
       } else {
         const { error } = await signUp(email, password, fullName);
@@ -102,21 +173,13 @@ export default function Auth() {
   };
 
   const handleMFAVerify = async () => {
-    if (!mfaFactorId || mfaCode.length !== 6) return;
+    if (!mfaFactorId || !mfaChallengeId || mfaCode.length !== 6) return;
 
     setIsVerifyingMFA(true);
     try {
-      // Create a challenge
-      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+      const { error } = await supabase.auth.mfa.verify({
         factorId: mfaFactorId,
-      });
-
-      if (challengeError) throw challengeError;
-
-      // Verify the challenge
-      const { data, error } = await supabase.auth.mfa.verify({
-        factorId: mfaFactorId,
-        challengeId: challengeData.id,
+        challengeId: mfaChallengeId,
         code: mfaCode,
       });
 
@@ -128,6 +191,18 @@ export default function Auth() {
       console.error("MFA verification error:", error);
       toast.error(error.message || "Invalid verification code");
       setMfaCode("");
+      
+      // Create a new challenge if verification failed
+      try {
+        const { data: challengeData } = await supabase.auth.mfa.challenge({
+          factorId: mfaFactorId,
+        });
+        if (challengeData) {
+          setMfaChallengeId(challengeData.id);
+        }
+      } catch (e) {
+        console.error("Failed to create new challenge:", e);
+      }
     } finally {
       setIsVerifyingMFA(false);
     }
@@ -137,8 +212,98 @@ export default function Auth() {
     await supabase.auth.signOut();
     setShowMFA(false);
     setMfaFactorId(null);
+    setMfaChallengeId(null);
     setMfaCode("");
   };
+
+  // Forgot password screen
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8 opacity-0 animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center mx-auto mb-4 shadow-glow">
+              <KeyRound className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold">Reset Password</h1>
+            <p className="text-muted-foreground mt-2">
+              {resetEmailSent 
+                ? "Check your email for a reset link"
+                : "Enter your email to receive a password reset link"
+              }
+            </p>
+          </div>
+
+          <div className="glass rounded-2xl p-8 opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
+            {resetEmailSent ? (
+              <div className="space-y-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  We've sent a password reset link to <strong>{email}</strong>. 
+                  Please check your inbox and follow the instructions.
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setResetEmailSent(false);
+                  }}
+                >
+                  Back to Sign In
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="resetEmail">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setErrors({});
+                      }}
+                      placeholder="you@company.com"
+                      className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
+                    />
+                  </div>
+                  {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="glow"
+                  className="w-full"
+                  disabled={isSendingReset}
+                >
+                  {isSendingReset ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      Send Reset Link
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setShowForgotPassword(false)}
+                >
+                  Back to Sign In
+                </Button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // MFA verification screen
   if (showMFA) {
@@ -258,7 +423,18 @@ export default function Auth() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                {isLogin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input

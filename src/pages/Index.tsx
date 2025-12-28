@@ -11,6 +11,7 @@ import { AdminPanel } from "@/components/admin/AdminPanel";
 import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 import { DealKanban } from "@/components/pipeline/DealKanban";
 import { DocumentRepository } from "@/components/repository/DocumentRepository";
+import { CRMDashboard } from "@/components/crm/CRMDashboard";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
@@ -20,6 +21,8 @@ const Index = () => {
     switch (activeTab) {
       case "dashboard":
         return <RoleDashboard />;
+      case "crm":
+        return <CRMDashboard />;
       case "pipeline":
         return <DealKanban />;
       case "analytics":
