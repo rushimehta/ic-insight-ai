@@ -76,6 +76,99 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_attribute_definitions: {
+        Row: {
+          attribute_type: string
+          created_at: string
+          display_name: string
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          is_required: boolean | null
+          name: string
+          options: Json | null
+          updated_at: string
+        }
+        Insert: {
+          attribute_type?: string
+          created_at?: string
+          display_name: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          name: string
+          options?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          attribute_type?: string
+          created_at?: string
+          display_name?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          name?: string
+          options?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      deal_attributes: {
+        Row: {
+          attribute_id: string
+          created_at: string
+          deal_id: string
+          id: string
+          updated_at: string
+          value_boolean: boolean | null
+          value_date: string | null
+          value_json: Json | null
+          value_number: number | null
+          value_text: string | null
+        }
+        Insert: {
+          attribute_id: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          updated_at?: string
+          value_boolean?: boolean | null
+          value_date?: string | null
+          value_json?: Json | null
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          attribute_id?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          updated_at?: string
+          value_boolean?: boolean | null
+          value_date?: string | null
+          value_json?: Json | null
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_attributes_attribute_id_fkey"
+            columns: ["attribute_id"]
+            isOneToOne: false
+            referencedRelation: "deal_attribute_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_attributes_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           company_name: string
