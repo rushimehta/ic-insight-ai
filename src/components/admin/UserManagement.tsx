@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { UserPlus, Mail, User, Loader2, Check, AlertCircle, Eye, Trash2, UserX, RefreshCw, Shield, Globe, Pencil, Phone, MapPin, Linkedin, Briefcase } from "lucide-react";
+import { UserPlus, Mail, User, Loader2, Check, AlertCircle, Eye, Trash2, UserX, RefreshCw, Shield, Globe, Pencil, Phone, MapPin, Linkedin, Briefcase, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSectors } from "@/hooks/useSectors";
+import { useLookups } from "@/hooks/useLookups";
+import { Combobox, MultiCombobox } from "@/components/ui/combobox";
+import { Building2 } from "lucide-react";
 
 const ROLES = [
   { value: "deal_team", label: "Deal Team", description: "Can view and manage deals" },
@@ -54,6 +57,7 @@ interface UserSectorInfo {
 
 export function UserManagement() {
   const { activeSectors } = useSectors();
+  const { departments, locations } = useLookups();
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -74,6 +78,8 @@ export function UserManagement() {
   const [editSectors, setEditSectors] = useState<string[]>([]);
   const [editAllSectors, setEditAllSectors] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isResettingMFA, setIsResettingMFA] = useState(false);
+  const [editEmail, setEditEmail] = useState("");
   
   // Edit profile fields
   const [editJobTitle, setEditJobTitle] = useState("");
@@ -82,6 +88,20 @@ export function UserManagement() {
   const [editLocation, setEditLocation] = useState("");
   const [editBio, setEditBio] = useState("");
   const [editLinkedin, setEditLinkedin] = useState("");
+
+  // Combobox options
+  const departmentOptions = departments
+    .filter(d => d.is_active)
+    .map(d => ({ value: d.name, label: d.display_name }));
+
+  const locationOptions = locations
+    .filter(l => l.is_active)
+    .map(l => ({ value: l.name, label: l.display_name }));
+
+  const sectorOptions = activeSectors.map(s => ({
+    value: s.name,
+    label: s.display_name,
+  }));
 
   useEffect(() => {
     fetchUsers();
@@ -271,6 +291,41 @@ export function UserManagement() {
     setEditLocation(user.profile?.location || "");
     setEditBio(user.profile?.bio || "");
     setEditLinkedin(user.profile?.linkedin_url || "");
+    setEditEmail(user.email);
+  };
+
+  const handleResetMFA = async (userId: string) => {
+    setIsResettingMFA(true);
+    try {
+      const { error } = await supabase.functions.invoke("manage-users", {
+        body: { action: "reset-mfa", userId },
+      });
+
+      if (error) throw error;
+
+      toast.success("MFA has been reset for this user");
+    } catch (error: any) {
+      console.error("Error resetting MFA:", error);
+      toast.error(error.message || "Failed to reset MFA");
+    } finally {
+      setIsResettingMFA(false);
+    }
+  };
+
+  const handleUpdateEmail = async (userId: string, newEmail: string) => {
+    try {
+      const { error } = await supabase.functions.invoke("manage-users", {
+        body: { action: "update-email", userId, email: newEmail },
+      });
+
+      if (error) throw error;
+
+      toast.success("Email updated successfully");
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error updating email:", error);
+      toast.error(error.message || "Failed to update email");
+    }
   };
 
   const handleEditRoleToggle = (role: AppRole) => {
@@ -303,6 +358,11 @@ export function UserManagement() {
 
     setIsSavingEdit(true);
     try {
+      // Update email if changed
+      if (editEmail && editEmail !== editingUser.email) {
+        await handleUpdateEmail(editingUser.id, editEmail);
+      }
+
       // Update roles - delete existing and add new
       await supabase
         .from("user_roles")
@@ -485,11 +545,14 @@ export function UserManagement() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="department">Department</Label>
-                    <Input
-                      id="department"
-                      placeholder="Investment Team"
+                    <Combobox
+                      options={departmentOptions}
                       value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
+                      onValueChange={setDepartment}
+                      placeholder="Select department"
+                      searchPlaceholder="Search departments..."
+                      emptyText="No departments found."
+                      icon={<Building2 className="w-4 h-4 text-muted-foreground" />}
                     />
                   </div>
                   <div className="space-y-2">
@@ -507,16 +570,15 @@ export function UserManagement() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="location">Location</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="location"
-                        placeholder="New York, NY"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
+                    <Combobox
+                      options={locationOptions}
+                      value={location}
+                      onValueChange={setLocation}
+                      placeholder="Select location"
+                      searchPlaceholder="Search locations..."
+                      emptyText="No locations found."
+                      icon={<MapPin className="w-4 h-4 text-muted-foreground" />}
+                    />
                   </div>
                 </div>
               </div>
@@ -836,6 +898,50 @@ export function UserManagement() {
           </DialogHeader>
           
           <div className="space-y-6 py-4">
+            {/* Email Change (Admin only) */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                Account Settings
+              </h4>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>MFA Reset</Label>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => editingUser && handleResetMFA(editingUser.id)}
+                    disabled={isResettingMFA}
+                  >
+                    {isResettingMFA ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Resetting...
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="w-4 h-4 mr-2" />
+                        Reset MFA
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             {/* Profile Fields */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium flex items-center gap-2">
@@ -858,11 +964,14 @@ export function UserManagement() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-department">Department</Label>
-                  <Input
-                    id="edit-department"
-                    placeholder="Investment Team"
+                  <Combobox
+                    options={departmentOptions}
                     value={editDepartment}
-                    onChange={(e) => setEditDepartment(e.target.value)}
+                    onValueChange={setEditDepartment}
+                    placeholder="Select department"
+                    searchPlaceholder="Search departments..."
+                    emptyText="No departments found."
+                    icon={<Building2 className="w-4 h-4 text-muted-foreground" />}
                   />
                 </div>
                 <div className="space-y-2">
@@ -880,16 +989,15 @@ export function UserManagement() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-location">Location</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="edit-location"
-                      placeholder="New York, NY"
-                      value={editLocation}
-                      onChange={(e) => setEditLocation(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
+                  <Combobox
+                    options={locationOptions}
+                    value={editLocation}
+                    onValueChange={setEditLocation}
+                    placeholder="Select location"
+                    searchPlaceholder="Search locations..."
+                    emptyText="No locations found."
+                    icon={<MapPin className="w-4 h-4 text-muted-foreground" />}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
@@ -955,22 +1063,15 @@ export function UserManagement() {
                   />
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {activeSectors.map((sector) => (
-                  <div
-                    key={sector.id}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer transition-colors text-sm ${
-                      editSectors.includes(sector.name)
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:border-primary/50"
-                    } ${editAllSectors ? "opacity-50 pointer-events-none" : ""}`}
-                    onClick={() => !editAllSectors && handleEditSectorToggle(sector.name)}
-                  >
-                    {editSectors.includes(sector.name) && <Check className="w-3 h-3" />}
-                    {sector.display_name}
-                  </div>
-                ))}
-              </div>
+              <MultiCombobox
+                options={sectorOptions}
+                values={editSectors}
+                onValuesChange={setEditSectors}
+                placeholder="Search and select sectors..."
+                searchPlaceholder="Search sectors..."
+                emptyText="No sectors found."
+                disabled={editAllSectors}
+              />
             </div>
           </div>
 
