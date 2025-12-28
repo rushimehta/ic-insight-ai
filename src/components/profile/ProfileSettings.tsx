@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox, MultiCombobox } from "@/components/ui/combobox";
 import { toast } from "sonner";
 import { 
   User, 
@@ -18,11 +18,11 @@ import {
   Phone, 
   MapPin, 
   Linkedin, 
-  Check, 
   Loader2,
   Building2,
   Globe
 } from "lucide-react";
+
 interface ProfileData {
   full_name: string | null;
   job_title: string | null;
@@ -51,6 +51,20 @@ export function ProfileSettings() {
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Convert lookups to combobox options
+  const departmentOptions = departments
+    .filter(d => d.is_active)
+    .map(d => ({ value: d.name, label: d.display_name }));
+
+  const locationOptions = locations
+    .filter(l => l.is_active)
+    .map(l => ({ value: l.name, label: l.display_name }));
+
+  const sectorOptions = activeSectors.map(s => ({
+    value: s.name,
+    label: s.display_name,
+  }));
 
   useEffect(() => {
     if (user?.id) {
@@ -104,14 +118,6 @@ export function ProfileSettings() {
     } catch (error) {
       console.error("Error fetching user sectors:", error);
     }
-  };
-
-  const handleSectorToggle = (sector: string) => {
-    setSelectedSectors(prev =>
-      prev.includes(sector)
-        ? prev.filter(s => s !== sector)
-        : [...prev, sector]
-    );
   };
 
   const handleSave = async () => {
@@ -212,24 +218,15 @@ export function ProfileSettings() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-              <Select
+              <Combobox
+                options={departmentOptions}
                 value={profile.department || ""}
                 onValueChange={(value) => setProfile(p => ({ ...p, department: value }))}
-              >
-                <SelectTrigger>
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-muted-foreground" />
-                    <SelectValue placeholder="Select department" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.filter(d => d.is_active).map((dept) => (
-                    <SelectItem key={dept.id} value={dept.name}>
-                      {dept.display_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select department"
+                searchPlaceholder="Search departments..."
+                emptyText="No departments found."
+                icon={<Building2 className="w-4 h-4 text-muted-foreground" />}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
@@ -246,24 +243,15 @@ export function ProfileSettings() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
-              <Select
+              <Combobox
+                options={locationOptions}
                 value={profile.location || ""}
                 onValueChange={(value) => setProfile(p => ({ ...p, location: value }))}
-              >
-                <SelectTrigger>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <SelectValue placeholder="Select location" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.filter(l => l.is_active).map((loc) => (
-                    <SelectItem key={loc.id} value={loc.name}>
-                      {loc.display_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select location"
+                searchPlaceholder="Search locations..."
+                emptyText="No locations found."
+                icon={<MapPin className="w-4 h-4 text-muted-foreground" />}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="linkedin_url">LinkedIn URL</Label>
@@ -303,26 +291,17 @@ export function ProfileSettings() {
             Select the sectors you're interested in or have expertise in
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {activeSectors.map((sector) => (
-              <div
-                key={sector.id}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full border cursor-pointer transition-all ${
-                  selectedSectors.includes(sector.name)
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:border-primary/50"
-                }`}
-                onClick={() => handleSectorToggle(sector.name)}
-              >
-                {selectedSectors.includes(sector.name) && <Check className="w-4 h-4" />}
-                {sector.display_name}
-              </div>
-            ))}
-          </div>
+        <CardContent className="space-y-4">
+          <MultiCombobox
+            options={sectorOptions}
+            values={selectedSectors}
+            onValuesChange={setSelectedSectors}
+            placeholder="Search and select sectors..."
+            searchPlaceholder="Search sectors..."
+            emptyText="No sectors found."
+          />
           {selectedSectors.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-1">
-              <span className="text-sm text-muted-foreground">Selected:</span>
+            <div className="flex flex-wrap gap-2">
               {selectedSectors.map(sector => {
                 const sectorInfo = activeSectors.find(s => s.name === sector);
                 return (
