@@ -24,6 +24,7 @@ import { QuestionPrep } from "@/components/questions/QuestionPrep";
 import { ICHistory } from "@/components/history/ICHistory";
 import { ChairmanNotes } from "@/components/chairman/ChairmanNotes";
 import { AdminPanel } from "@/components/admin/AdminPanel";
+import { DataConnectors } from "@/components/connectors/DataConnectors";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,7 @@ const App = () => (
               <Route path="questions" element={<QuestionPrep />} />
               <Route path="history" element={<ICHistory />} />
               <Route path="chairman" element={<ChairmanNotes />} />
+              <Route path="connectors" element={<DataConnectors />} />
               <Route path="admin" element={<AdminPanel />} />
             </Route>
             <Route path="*" element={<NotFound />} />
