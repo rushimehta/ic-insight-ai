@@ -173,9 +173,9 @@ export function DocumentRepository() {
             <FolderOpen className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-2xl font-semibold">Document Repository</h2>
+            <h2 className="text-2xl font-bold">IC Archive</h2>
             <p className="text-muted-foreground">
-              Browse IC documents organized by year, sector, and deal
+              Browse historical IC decks, investment memos, and post-committee meeting notes by year, sector, and deal
             </p>
           </div>
         </div>

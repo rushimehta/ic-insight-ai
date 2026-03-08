@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  MessageSquare, 
-  HelpCircle, 
+import {
+  LayoutDashboard,
+  FileText,
+  MessageSquare,
+  HelpCircle,
   History,
   ChevronLeft,
-  Sparkles,
+  Target,
   LogOut,
   User,
   FileEdit,
@@ -20,7 +20,10 @@ import {
   Briefcase,
   Sun,
   Moon,
-  Monitor
+  Monitor,
+  Upload,
+  Database,
+  Library
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,22 +44,33 @@ interface NavItem {
   label: string;
   id: string;
   requiresChairman?: boolean;
+  section?: string;
 }
 
 const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", id: "dashboard" },
-  { icon: Briefcase, label: "CRM", id: "crm" },
-  { icon: Kanban, label: "Deal Pipeline", id: "pipeline" },
-  { icon: BarChart3, label: "Analytics", id: "analytics" },
-  { icon: FileText, label: "Documents", id: "documents" },
-  { icon: FolderOpen, label: "Repository", id: "repository" },
-  { icon: FileEdit, label: "IC Generator", id: "generator" },
-  { icon: MessageSquare, label: "AI Chat", id: "chat" },
-  { icon: HelpCircle, label: "Question Prep", id: "questions" },
-  { icon: History, label: "IC History", id: "history" },
-  { icon: ClipboardList, label: "Chairman Notes", id: "chairman", requiresChairman: true },
-  { icon: Shield, label: "Admin", id: "admin", requiresChairman: true },
+  { icon: LayoutDashboard, label: "Deal Command Center", id: "dashboard", section: "core" },
+  { icon: Briefcase, label: "Deal CRM", id: "crm", section: "deals" },
+  { icon: Kanban, label: "Deal Pipeline", id: "pipeline", section: "deals" },
+  { icon: BarChart3, label: "Analytics", id: "analytics", section: "deals" },
+  { icon: Library, label: "IC Archive", id: "repository", section: "ic" },
+  { icon: Upload, label: "Upload IC Decks", id: "documents", section: "ic" },
+  { icon: FileEdit, label: "IC Memo Builder", id: "generator", section: "ic" },
+  { icon: ClipboardList, label: "IC Meeting Tracker", id: "chairman", section: "ic" },
+  { icon: History, label: "IC History", id: "history", section: "ic" },
+  { icon: MessageSquare, label: "Deal Advisor AI", id: "chat", section: "ai" },
+  { icon: HelpCircle, label: "IC Question Prep", id: "questions", section: "ai" },
+  { icon: Database, label: "Data Connectors", id: "connectors", section: "integrations" },
+  { icon: Shield, label: "Admin", id: "admin", requiresChairman: true, section: "admin" },
 ];
+
+const sectionLabels: Record<string, string> = {
+  core: "",
+  deals: "DEAL MANAGEMENT",
+  ic: "INVESTMENT COMMITTEE",
+  ai: "AI & INSIGHTS",
+  integrations: "INTEGRATIONS",
+  admin: "ADMINISTRATION",
+};
 
 interface SidebarProps {
   activeTab: string;
@@ -78,9 +92,22 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const userName = user?.user_metadata?.full_name || userEmail.split("@")[0];
   const displayRole = roles[0]?.replace(/_/g, " ") || "Team Member";
 
-  const visibleNavItems = navItems.filter(item => 
+  const visibleNavItems = navItems.filter(item =>
     !item.requiresChairman || isChairmanOrAdmin
   );
+
+  // Group items by section
+  const groupedItems: { section: string; items: NavItem[] }[] = [];
+  let currentSection = "";
+  visibleNavItems.forEach(item => {
+    const section = item.section || "";
+    if (section !== currentSection) {
+      groupedItems.push({ section, items: [item] });
+      currentSection = section;
+    } else {
+      groupedItems[groupedItems.length - 1].items.push(item);
+    }
+  });
 
   return (
     <aside
@@ -92,32 +119,44 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       {/* Logo */}
       <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
         <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center glow">
-          <Sparkles className="w-5 h-5 text-primary" />
+          <Target className="w-5 h-5 text-primary" />
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-lg font-semibold text-foreground">IC Prep AI</h1>
-            <p className="text-xs text-muted-foreground">Investment Intelligence</p>
+            <h1 className="text-lg font-semibold text-foreground">Deal IC Advisor</h1>
+            <p className="text-xs text-muted-foreground">PE Investment Intelligence</p>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {visibleNavItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onTabChange(item.id)}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-              activeTab === item.id
-                ? "bg-primary/10 text-primary border border-primary/20"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {groupedItems.map((group, gi) => (
+          <div key={gi}>
+            {!collapsed && sectionLabels[group.section] && (
+              <div className="text-[10px] font-semibold text-muted-foreground/60 tracking-wider px-3 pt-4 pb-1.5">
+                {sectionLabels[group.section]}
+              </div>
             )}
-          >
-            <item.icon className="w-5 h-5 shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
-          </button>
+            {collapsed && gi > 0 && sectionLabels[group.section] && (
+              <div className="border-t border-sidebar-border my-2" />
+            )}
+            {group.items.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => onTabChange(item.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                  activeTab === item.id
+                    ? "bg-primary/10 text-primary border border-primary/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <item.icon className="w-4.5 h-4.5 shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
 
@@ -185,7 +224,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        
+
         <Button
           variant="ghost"
           size="icon"

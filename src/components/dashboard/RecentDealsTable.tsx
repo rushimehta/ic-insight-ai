@@ -1,69 +1,106 @@
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 
-interface Deal {
+interface ICMeeting {
   id: string;
-  name: string;
+  dealName: string;
+  company: string;
   sector: string;
   date: string;
-  status: "approved" | "rejected" | "pending";
-  questionsCount: number;
+  icStage: string;
+  outcome: "approved" | "rejected" | "deferred" | "pending" | "conditions";
+  ev: string;
+  keyTopic: string;
 }
 
-const mockDeals: Deal[] = [
-  { id: "1", name: "TechVentures Series B", sector: "Technology", date: "2024-01-15", status: "approved", questionsCount: 24 },
-  { id: "2", name: "HealthCare Plus Acquisition", sector: "Healthcare", date: "2024-01-12", status: "approved", questionsCount: 31 },
-  { id: "3", name: "GreenEnergy Fund III", sector: "Energy", date: "2024-01-10", status: "pending", questionsCount: 18 },
-  { id: "4", name: "FinTech Innovations", sector: "Financial Services", date: "2024-01-08", status: "rejected", questionsCount: 42 },
-  { id: "5", name: "Real Estate Growth", sector: "Real Estate", date: "2024-01-05", status: "approved", questionsCount: 27 },
+const recentICMeetings: ICMeeting[] = [
+  { id: "1", dealName: "Project Citadel", company: "Premier Waste Solutions", sector: "Industrials", date: "2026-03-05", icStage: "IC3", outcome: "approved", ev: "$310M", keyTopic: "Add-on pipeline validation" },
+  { id: "2", dealName: "Project Echo", company: "TalentBridge HR Tech", sector: "Technology", date: "2026-03-01", icStage: "IC Final", outcome: "approved", ev: "$215M", keyTopic: "Final terms & closing conditions" },
+  { id: "3", dealName: "Project Granite", company: "Apex Dental Partners", sector: "Healthcare", date: "2026-02-25", icStage: "IC2", outcome: "rejected", ev: "$520M", keyTopic: "Reimbursement risk too high" },
+  { id: "4", dealName: "Project Atlas", company: "MedDevice Holdings", sector: "Healthcare", date: "2026-02-20", icStage: "IC1", outcome: "conditions", ev: "$425M", keyTopic: "DD authorization with conditions" },
+  { id: "5", dealName: "Project Beacon", company: "CloudScale Systems", sector: "Technology", date: "2026-02-15", icStage: "IC1", outcome: "approved", ev: "$680M", keyTopic: "Growth equity screening approved" },
 ];
 
-const statusColors = {
-  approved: "bg-success/10 text-success border-success/20",
-  rejected: "bg-destructive/10 text-destructive border-destructive/20",
-  pending: "bg-warning/10 text-warning border-warning/20",
+const outcomeColors: Record<string, string> = {
+  approved: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+  rejected: "bg-red-500/10 text-red-500 border-red-500/20",
+  deferred: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+  pending: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  conditions: "bg-violet-500/10 text-violet-500 border-violet-500/20",
+};
+
+const stageColors: Record<string, string> = {
+  IC1: "text-blue-400",
+  IC2: "text-purple-400",
+  IC3: "text-orange-400",
+  "IC Final": "text-emerald-400",
 };
 
 export function RecentDealsTable() {
+  const navigate = useNavigate();
+
   return (
     <div className="glass rounded-xl overflow-hidden opacity-0 animate-fade-in" style={{ animationDelay: "300ms" }}>
-      <div className="p-4 border-b border-border">
-        <h3 className="font-semibold">Recent Investment Committees</h3>
-        <p className="text-xs text-muted-foreground mt-1">Last 5 IC meetings</p>
+      <div className="p-4 border-b border-border flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold">Recent IC Meetings</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Latest investment committee decisions</p>
+        </div>
+        <button
+          onClick={() => navigate("/history")}
+          className="text-xs text-primary hover:underline cursor-pointer"
+        >
+          View all history →
+        </button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border">
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Deal Name</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Sector</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Date</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Status</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Questions</th>
+            <tr className="border-b border-border bg-secondary/20">
+              <th className="text-left text-[11px] font-semibold text-muted-foreground px-4 py-2.5 uppercase tracking-wider">Deal</th>
+              <th className="text-left text-[11px] font-semibold text-muted-foreground px-3 py-2.5 uppercase tracking-wider">Sector</th>
+              <th className="text-left text-[11px] font-semibold text-muted-foreground px-3 py-2.5 uppercase tracking-wider">Date</th>
+              <th className="text-left text-[11px] font-semibold text-muted-foreground px-3 py-2.5 uppercase tracking-wider">Stage</th>
+              <th className="text-left text-[11px] font-semibold text-muted-foreground px-3 py-2.5 uppercase tracking-wider">EV</th>
+              <th className="text-left text-[11px] font-semibold text-muted-foreground px-3 py-2.5 uppercase tracking-wider">Outcome</th>
+              <th className="text-left text-[11px] font-semibold text-muted-foreground px-3 py-2.5 uppercase tracking-wider">Key Topic</th>
             </tr>
           </thead>
           <tbody>
-            {mockDeals.map((deal, index) => (
-              <tr 
-                key={deal.id} 
-                className="border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
+            {recentICMeetings.map((meeting) => (
+              <tr
+                key={meeting.id}
+                className="border-b border-border/30 last:border-0 hover:bg-secondary/20 transition-colors cursor-pointer"
+                onClick={() => navigate("/history")}
               >
                 <td className="px-4 py-3">
-                  <span className="font-medium text-sm">{deal.name}</span>
+                  <div>
+                    <span className="font-medium text-sm">{meeting.dealName}</span>
+                    <p className="text-xs text-muted-foreground">{meeting.company}</p>
+                  </div>
                 </td>
-                <td className="px-4 py-3">
-                  <span className="text-sm text-muted-foreground">{deal.sector}</span>
+                <td className="px-3 py-3">
+                  <Badge variant="secondary" className="text-xs">{meeting.sector}</Badge>
                 </td>
-                <td className="px-4 py-3">
-                  <span className="text-sm text-muted-foreground">{deal.date}</span>
+                <td className="px-3 py-3">
+                  <span className="text-sm text-muted-foreground">{meeting.date}</span>
                 </td>
-                <td className="px-4 py-3">
-                  <Badge variant="outline" className={cn("capitalize text-xs", statusColors[deal.status])}>
-                    {deal.status}
+                <td className="px-3 py-3">
+                  <span className={cn("text-sm font-medium", stageColors[meeting.icStage] || "text-foreground")}>
+                    {meeting.icStage}
+                  </span>
+                </td>
+                <td className="px-3 py-3">
+                  <span className="text-sm font-medium">{meeting.ev}</span>
+                </td>
+                <td className="px-3 py-3">
+                  <Badge variant="outline" className={cn("capitalize text-[10px] border", outcomeColors[meeting.outcome])}>
+                    {meeting.outcome === "conditions" ? "approved w/ conditions" : meeting.outcome}
                   </Badge>
                 </td>
-                <td className="px-4 py-3">
-                  <span className="text-sm">{deal.questionsCount}</span>
+                <td className="px-3 py-3">
+                  <span className="text-xs text-muted-foreground">{meeting.keyTopic}</span>
                 </td>
               </tr>
             ))}
