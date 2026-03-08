@@ -27,11 +27,10 @@ import { Deal } from "@/hooks/useDeals";
 const STAGE_COLORS: Record<string, string> = {
   sourcing: "bg-slate-500/20 text-slate-400 border-slate-500/30",
   initial_review: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  deep_dive: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  ic_preparation: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  ic_review: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-  due_diligence: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
-  closing: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  due_diligence: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  ic_scheduled: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  ic_complete: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+  approved: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   closed: "bg-green-500/20 text-green-400 border-green-500/30",
   passed: "bg-red-500/20 text-red-400 border-red-500/30",
 };
@@ -40,6 +39,8 @@ const IC_STAGE_COLORS: Record<string, string> = {
   ic1: "bg-blue-500/20 text-blue-400",
   ic2: "bg-purple-500/20 text-purple-400",
   ic3: "bg-amber-500/20 text-amber-400",
+  ic4: "bg-yellow-500/20 text-yellow-400",
+  ic_final: "bg-orange-500/20 text-orange-400",
   approved: "bg-green-500/20 text-green-400",
   rejected: "bg-red-500/20 text-red-400",
 };
@@ -142,11 +143,10 @@ export function DealList({
               <SelectItem value="all">All Stages</SelectItem>
               <SelectItem value="sourcing">Sourcing</SelectItem>
               <SelectItem value="initial_review">Initial Review</SelectItem>
-              <SelectItem value="deep_dive">Deep Dive</SelectItem>
-              <SelectItem value="ic_preparation">IC Preparation</SelectItem>
-              <SelectItem value="ic_review">IC Review</SelectItem>
               <SelectItem value="due_diligence">Due Diligence</SelectItem>
-              <SelectItem value="closing">Closing</SelectItem>
+              <SelectItem value="ic_scheduled">IC Scheduled</SelectItem>
+              <SelectItem value="ic_complete">IC Complete</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
               <SelectItem value="closed">Closed</SelectItem>
               <SelectItem value="passed">Passed</SelectItem>
             </SelectContent>

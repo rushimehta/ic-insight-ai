@@ -21,19 +21,20 @@ import type { SectorType } from "@/hooks/useUserPermissions";
 const DEAL_STAGES = [
   { value: "sourcing", label: "Sourcing" },
   { value: "initial_review", label: "Initial Review" },
-  { value: "deep_dive", label: "Deep Dive" },
-  { value: "ic_preparation", label: "IC Preparation" },
-  { value: "ic_review", label: "IC Review" },
   { value: "due_diligence", label: "Due Diligence" },
-  { value: "closing", label: "Closing" },
+  { value: "ic_scheduled", label: "IC Scheduled" },
+  { value: "ic_complete", label: "IC Complete" },
+  { value: "approved", label: "Approved" },
   { value: "closed", label: "Closed" },
   { value: "passed", label: "Passed" },
 ];
 
 const IC_STAGES = [
-  { value: "ic1", label: "IC 1" },
-  { value: "ic2", label: "IC 2" },
-  { value: "ic3", label: "IC 3" },
+  { value: "ic1", label: "IC 1 - Initial Review" },
+  { value: "ic2", label: "IC 2 - Deep Dive" },
+  { value: "ic3", label: "IC 3 - Due Diligence" },
+  { value: "ic4", label: "IC 4 - Final Terms" },
+  { value: "ic_final", label: "IC Final - Decision" },
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
 ];

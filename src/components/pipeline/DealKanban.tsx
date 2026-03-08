@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Plus, GripVertical, Building2, Calendar, Users, DollarSign, Loader2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,28 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useSectors } from "@/hooks/useSectors";
+import { useDeals, Deal } from "@/hooks/useDeals";
 import { cn } from "@/lib/utils";
+import type { SectorType } from "@/hooks/useUserPermissions";
 
 type DealStage = "sourcing" | "initial_review" | "due_diligence" | "ic_scheduled" | "ic_complete" | "approved" | "closed" | "passed";
-type SectorType = "technology" | "healthcare" | "financial_services" | "consumer_retail" | "industrials" | "energy" | "real_estate" | "media_entertainment" | "infrastructure";
 type ICStage = "ic1" | "ic2" | "ic3" | "ic4" | "ic_final" | "approved" | "rejected";
-
-interface Deal {
-  id: string;
-  deal_name: string;
-  company_name: string;
-  sector: SectorType;
-  stage: DealStage;
-  ic_stage?: ICStage | null;
-  deal_size: string | null;
-  description: string | null;
-  lead_partner: string | null;
-  ic_date: string | null;
-  created_at: string;
-}
 
 const STAGES: { id: DealStage; label: string; color: string }[] = [
   { id: "sourcing", label: "Sourcing", color: "bg-slate-500" },
@@ -61,10 +46,8 @@ const IC_STAGE_COLORS: Record<string, string> = {
 };
 
 export function DealKanban() {
-  const { user } = useAuth();
   const { activeSectors } = useSectors();
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { deals, isLoading, createDeal, updateDeal } = useDeals();
   const [draggedDeal, setDraggedDeal] = useState<Deal | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newDeal, setNewDeal] = useState({
@@ -76,27 +59,6 @@ export function DealKanban() {
     lead_partner: "",
     ic_stage: "ic1" as ICStage,
   });
-
-  useEffect(() => {
-    fetchDeals();
-  }, []);
-
-  const fetchDeals = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("deals")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setDeals(data || []);
-    } catch (error) {
-      console.error("Error fetching deals:", error);
-      toast.error("Failed to load deals");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleDragStart = (deal: Deal) => {
     setDraggedDeal(deal);
@@ -113,16 +75,7 @@ export function DealKanban() {
     }
 
     try {
-      const { error } = await supabase
-        .from("deals")
-        .update({ stage })
-        .eq("id", draggedDeal.id);
-
-      if (error) throw error;
-
-      setDeals(prev => prev.map(d => 
-        d.id === draggedDeal.id ? { ...d, stage } : d
-      ));
+      await updateDeal(draggedDeal.id, { stage });
       toast.success(`Moved "${draggedDeal.deal_name}" to ${STAGES.find(s => s.id === stage)?.label}`);
     } catch (error) {
       console.error("Error updating deal:", error);
@@ -139,19 +92,17 @@ export function DealKanban() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from("deals")
-        .insert({
-          ...newDeal,
-          stage: "sourcing" as DealStage,
-          created_by: user?.id,
-        })
-        .select()
-        .single();
+      await createDeal({
+        deal_name: newDeal.deal_name,
+        company_name: newDeal.company_name,
+        sector: newDeal.sector,
+        stage: "sourcing",
+        ic_stage: newDeal.ic_stage,
+        deal_size: newDeal.deal_size || null,
+        description: newDeal.description || null,
+        lead_partner: newDeal.lead_partner || null,
+      });
 
-      if (error) throw error;
-
-      setDeals(prev => [data, ...prev]);
       setIsCreateOpen(false);
       setNewDeal({
         deal_name: "",
@@ -169,8 +120,8 @@ export function DealKanban() {
     }
   };
 
-  const getDealsByStage = (stage: DealStage) => 
-    deals.filter(d => d.stage === stage);
+  const getDealsByStage = (stage: DealStage) =>
+    deals.filter((d: Deal) => d.stage === stage);
 
   if (isLoading) {
     return (
@@ -333,7 +284,7 @@ export function DealKanban() {
                                 
                                 <div className="flex flex-wrap gap-1 mt-2">
                                   <Badge variant="outline" className="text-[10px] capitalize">
-                                    {deal.sector.replace("_", " ")}
+                                    {deal.sector.replace(/_/g, " ")}
                                   </Badge>
                                   {deal.ic_stage && (
                                     <Badge className={cn("text-[10px] border", IC_STAGE_COLORS[deal.ic_stage] || "")}>

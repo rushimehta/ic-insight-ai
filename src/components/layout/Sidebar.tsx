@@ -17,11 +17,15 @@ import {
   Kanban,
   FolderOpen,
   Settings,
-  Briefcase
+  Briefcase,
+  Sun,
+  Moon,
+  Monitor
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { useTheme } from "@/hooks/useTheme";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -64,6 +68,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [showSettings, setShowSettings] = useState(false);
   const { user, signOut } = useAuth();
   const { roles, isChairmanOrAdmin } = useUserPermissions();
+  const { theme, setTheme } = useTheme();
 
   const handleSignOut = async () => {
     await signOut();
@@ -71,7 +76,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
   const userEmail = user?.email || "";
   const userName = user?.user_metadata?.full_name || userEmail.split("@")[0];
-  const displayRole = roles[0]?.replace("_", " ") || "Team Member";
+  const displayRole = roles[0]?.replace(/_/g, " ") || "Team Member";
 
   const visibleNavItems = navItems.filter(item => 
     !item.requiresChairman || isChairmanOrAdmin
@@ -145,7 +150,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 <div className="flex flex-wrap gap-1 mt-2">
                   {roles.map(role => (
                     <Badge key={role} variant="secondary" className="text-[10px] capitalize">
-                      {role.replace("_", " ")}
+                      {role.replace(/_/g, " ")}
                     </Badge>
                   ))}
                 </div>
@@ -156,6 +161,24 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               <Settings className="w-4 h-4 mr-2" />
               Settings
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Theme</div>
+            <DropdownMenuItem onClick={() => setTheme("light")}>
+              <Sun className="w-4 h-4 mr-2" />
+              Light
+              {theme === "light" && <span className="ml-auto text-primary">&#10003;</span>}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("dark")}>
+              <Moon className="w-4 h-4 mr-2" />
+              Dark
+              {theme === "dark" && <span className="ml-auto text-primary">&#10003;</span>}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("system")}>
+              <Monitor className="w-4 h-4 mr-2" />
+              System
+              {theme === "system" && <span className="ml-auto text-primary">&#10003;</span>}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
               <LogOut className="w-4 h-4 mr-2" />
               Sign out

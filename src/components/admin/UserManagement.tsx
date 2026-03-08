@@ -761,7 +761,7 @@ export function UserManagement() {
                             <div className="flex flex-wrap gap-1 mt-1">
                               {user.roles.length > 0 && user.roles.map(role => (
                                 <Badge key={role} variant="outline" className="text-xs capitalize">
-                                  {role.replace("_", " ")}
+                                  {role.replace(/_/g, " ")}
                                 </Badge>
                               ))}
                               {userSectors[user.id]?.length === activeSectors.length && activeSectors.length > 0 ? (

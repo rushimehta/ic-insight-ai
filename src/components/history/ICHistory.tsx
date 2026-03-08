@@ -1,99 +1,82 @@
-import { useState } from "react";
-import { Search, Calendar, Filter, ChevronDown, FileText, Users, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Calendar, Filter, ChevronDown, FileText, Users, Clock, CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ICMeeting {
   id: string;
-  dealName: string;
-  sector: string;
-  date: string;
-  status: "approved" | "rejected" | "deferred";
-  investmentSize: string;
-  attendees: number;
-  questionsAsked: number;
-  duration: string;
-  keyTopics: string[];
+  deal_name: string;
+  sector: string | null;
+  meeting_date: string;
+  outcome: string | null;
+  deal_size: string | null;
+  attendees: string[] | null;
+  questions_asked: string[] | null;
+  summary: string | null;
+  key_concerns: string[] | null;
 }
 
-const mockMeetings: ICMeeting[] = [
-  {
-    id: "1",
-    dealName: "TechVentures Series B",
-    sector: "Technology",
-    date: "2024-01-15",
-    status: "approved",
-    investmentSize: "$25M",
-    attendees: 8,
-    questionsAsked: 24,
-    duration: "1h 45m",
-    keyTopics: ["Valuation", "Market Size", "Competition"],
-  },
-  {
-    id: "2",
-    dealName: "HealthCare Plus Acquisition",
-    sector: "Healthcare",
-    date: "2024-01-12",
-    status: "approved",
-    investmentSize: "$150M",
-    attendees: 12,
-    questionsAsked: 31,
-    duration: "2h 30m",
-    keyTopics: ["Regulatory Risk", "Synergies", "Integration"],
-  },
-  {
-    id: "3",
-    dealName: "GreenEnergy Fund III",
-    sector: "Energy",
-    date: "2024-01-10",
-    status: "deferred",
-    investmentSize: "$50M",
-    attendees: 9,
-    questionsAsked: 18,
-    duration: "1h 15m",
-    keyTopics: ["ESG", "Policy Risk", "Returns"],
-  },
-  {
-    id: "4",
-    dealName: "FinTech Innovations",
-    sector: "Financial Services",
-    date: "2024-01-08",
-    status: "rejected",
-    investmentSize: "$35M",
-    attendees: 10,
-    questionsAsked: 42,
-    duration: "2h 15m",
-    keyTopics: ["Regulation", "Valuation", "Competition"],
-  },
-  {
-    id: "5",
-    dealName: "Real Estate Growth REIT",
-    sector: "Real Estate",
-    date: "2024-01-05",
-    status: "approved",
-    investmentSize: "$75M",
-    attendees: 7,
-    questionsAsked: 27,
-    duration: "1h 30m",
-    keyTopics: ["Cap Rate", "Occupancy", "Location"],
-  },
-];
-
-const statusConfig = {
+const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; bg: string; label: string }> = {
   approved: { icon: CheckCircle, color: "text-success", bg: "bg-success/10", label: "Approved" },
   rejected: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10", label: "Rejected" },
   deferred: { icon: AlertCircle, color: "text-warning", bg: "bg-warning/10", label: "Deferred" },
+  pending: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted/10", label: "Pending" },
 };
 
 export function ICHistory() {
+  const [meetings, setMeetings] = useState<ICMeeting[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sectorFilter, setSectorFilter] = useState<string>("all");
   const [selectedMeeting, setSelectedMeeting] = useState<ICMeeting | null>(null);
 
-  const filteredMeetings = mockMeetings.filter(meeting =>
-    meeting.dealName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    meeting.sector.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    fetchMeetings();
+  }, []);
+
+  const fetchMeetings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("ic_meetings")
+        .select("*")
+        .order("meeting_date", { ascending: false });
+
+      if (error) throw error;
+      setMeetings(data || []);
+    } catch (error) {
+      console.error("Error fetching IC meetings:", error);
+      toast.error("Failed to load IC history");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const sectors = [...new Set(meetings.map(m => m.sector).filter(Boolean))];
+
+  const filteredMeetings = meetings.filter(meeting => {
+    const matchesSearch =
+      meeting.deal_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (meeting.sector || "").toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || (meeting.outcome || "pending") === statusFilter;
+    const matchesSector = sectorFilter === "all" || meeting.sector === sectorFilter;
+    return matchesSearch && matchesStatus && matchesSector;
+  });
+
+  const getStatus = (outcome: string | null) => outcome || "pending";
+  const getStatusConfig = (outcome: string | null) => statusConfig[getStatus(outcome)] || statusConfig.pending;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -115,70 +98,119 @@ export function ICHistory() {
             className="w-full bg-secondary/50 rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
-        <Button variant="glass" className="flex items-center gap-2">
-          <Calendar className="w-4 h-4" />
-          Date Range
-          <ChevronDown className="w-3 h-3" />
-        </Button>
-        <Button variant="glass" className="flex items-center gap-2">
-          <Filter className="w-4 h-4" />
-          Filters
-          <ChevronDown className="w-3 h-3" />
-        </Button>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[160px]">
+            <Filter className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="deferred">Deferred</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sectorFilter} onValueChange={setSectorFilter}>
+          <SelectTrigger className="w-[180px]">
+            <Calendar className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Sector" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sectors</SelectItem>
+            {sectors.map((sector) => (
+              <SelectItem key={sector} value={sector!}>
+                {sector!.replace(/_/g, " ")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      {/* Results count */}
+      <p className="text-sm text-muted-foreground">
+        {filteredMeetings.length} meeting{filteredMeetings.length !== 1 ? "s" : ""} found
+      </p>
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Meetings List */}
         <div className="lg:col-span-2 space-y-3">
-          {filteredMeetings.map((meeting, index) => {
-            const StatusIcon = statusConfig[meeting.status].icon;
-            return (
-              <div
-                key={meeting.id}
-                onClick={() => setSelectedMeeting(meeting)}
-                className={cn(
-                  "glass rounded-xl p-4 cursor-pointer transition-all duration-200 opacity-0 animate-fade-in",
-                  selectedMeeting?.id === meeting.id
-                    ? "border-primary/50 bg-primary/5"
-                    : "glass-hover"
-                )}
-                style={{ animationDelay: `${150 + index * 50}ms` }}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h4 className="font-medium">{meeting.dealName}</h4>
-                    <p className="text-sm text-muted-foreground">{meeting.sector}</p>
+          {filteredMeetings.length === 0 ? (
+            <div className="glass rounded-xl p-12 text-center">
+              <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">No IC meetings found</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {meetings.length === 0
+                  ? "IC meetings will appear here once they are recorded."
+                  : "Try adjusting your search or filters."}
+              </p>
+            </div>
+          ) : (
+            filteredMeetings.map((meeting, index) => {
+              const config = getStatusConfig(meeting.outcome);
+              const StatusIcon = config.icon;
+              const attendeeCount = Array.isArray(meeting.attendees) ? meeting.attendees.length : 0;
+              const questionCount = Array.isArray(meeting.questions_asked) ? meeting.questions_asked.length : 0;
+
+              return (
+                <div
+                  key={meeting.id}
+                  onClick={() => setSelectedMeeting(meeting)}
+                  className={cn(
+                    "glass rounded-xl p-4 cursor-pointer transition-all duration-200 opacity-0 animate-fade-in",
+                    selectedMeeting?.id === meeting.id
+                      ? "border-primary/50 bg-primary/5"
+                      : "glass-hover"
+                  )}
+                  style={{ animationDelay: `${150 + index * 50}ms` }}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h4 className="font-medium">{meeting.deal_name}</h4>
+                      <p className="text-sm text-muted-foreground capitalize">
+                        {(meeting.sector || "Unknown").replace(/_/g, " ")}
+                      </p>
+                    </div>
+                    <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", config.bg, config.color)}>
+                      <StatusIcon className="w-3.5 h-3.5" />
+                      {config.label}
+                    </div>
                   </div>
-                  <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", statusConfig[meeting.status].bg, statusConfig[meeting.status].color)}>
-                    <StatusIcon className="w-3.5 h-3.5" />
-                    {statusConfig[meeting.status].label}
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {new Date(meeting.meeting_date).toLocaleDateString()}
+                    </span>
+                    {attendeeCount > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5" />
+                        {attendeeCount} attendees
+                      </span>
+                    )}
+                    {questionCount > 0 && (
+                      <span className="flex items-center gap-1">
+                        <FileText className="w-3.5 h-3.5" />
+                        {questionCount} questions
+                      </span>
+                    )}
+                    {meeting.deal_size && (
+                      <span className="font-medium text-foreground">{meeting.deal_size}</span>
+                    )}
                   </div>
+                  {Array.isArray(meeting.key_concerns) && meeting.key_concerns.length > 0 && (
+                    <div className="flex items-center gap-2 mt-3">
+                      {(meeting.key_concerns as string[]).slice(0, 3).map((concern, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {typeof concern === "string" ? concern : (concern as any).concern || ""}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {meeting.date}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5" />
-                    {meeting.attendees} attendees
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" />
-                    {meeting.duration}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mt-3">
-                  {meeting.keyTopics.map((topic, i) => (
-                    <Badge key={i} variant="outline" className="text-xs">
-                      {topic}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
         {/* Details Panel */}
@@ -186,44 +218,76 @@ export function ICHistory() {
           {selectedMeeting ? (
             <div className="space-y-4">
               <div>
-                <h3 className="font-semibold text-lg">{selectedMeeting.dealName}</h3>
-                <p className="text-sm text-muted-foreground">{selectedMeeting.sector}</p>
+                <h3 className="font-semibold text-lg">{selectedMeeting.deal_name}</h3>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {(selectedMeeting.sector || "Unknown").replace(/_/g, " ")}
+                </p>
               </div>
 
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Investment Size</span>
-                  <span className="font-medium">{selectedMeeting.investmentSize}</span>
+                  <span className="text-muted-foreground">Date</span>
+                  <span className="font-medium">{new Date(selectedMeeting.meeting_date).toLocaleDateString()}</span>
                 </div>
+                {selectedMeeting.deal_size && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Deal Size</span>
+                    <span className="font-medium">{selectedMeeting.deal_size}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Questions Asked</span>
-                  <span className="font-medium">{selectedMeeting.questionsAsked}</span>
+                  <span className="text-muted-foreground">Outcome</span>
+                  <Badge className={cn("text-xs border", getStatusConfig(selectedMeeting.outcome).bg, getStatusConfig(selectedMeeting.outcome).color)}>
+                    {getStatusConfig(selectedMeeting.outcome).label}
+                  </Badge>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Meeting Duration</span>
-                  <span className="font-medium">{selectedMeeting.duration}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Attendees</span>
-                  <span className="font-medium">{selectedMeeting.attendees}</span>
-                </div>
+                {Array.isArray(selectedMeeting.attendees) && selectedMeeting.attendees.length > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Attendees</span>
+                    <span className="font-medium">{selectedMeeting.attendees.length}</span>
+                  </div>
+                )}
+                {Array.isArray(selectedMeeting.questions_asked) && selectedMeeting.questions_asked.length > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Questions Asked</span>
+                    <span className="font-medium">{selectedMeeting.questions_asked.length}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="pt-2 border-t border-border">
-                <p className="text-sm text-muted-foreground mb-2">Key Discussion Topics</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedMeeting.keyTopics.map((topic, i) => (
-                    <Badge key={i} variant="outline">{topic}</Badge>
-                  ))}
+              {selectedMeeting.summary && (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-1">Summary</p>
+                  <p className="text-sm whitespace-pre-wrap">{selectedMeeting.summary}</p>
                 </div>
-              </div>
+              )}
 
-              <div className="flex gap-2 pt-2">
-                <Button variant="glow" size="sm" className="flex-1">
-                  <FileText className="w-4 h-4 mr-1" />
-                  View Documents
-                </Button>
-              </div>
+              {Array.isArray(selectedMeeting.questions_asked) && selectedMeeting.questions_asked.length > 0 && (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-2">Questions Asked</p>
+                  <ul className="space-y-1">
+                    {(selectedMeeting.questions_asked as string[]).map((q, i) => (
+                      <li key={i} className="text-sm flex items-start gap-2">
+                        <span className="text-primary shrink-0">•</span>
+                        <span>{typeof q === "string" ? q : JSON.stringify(q)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {Array.isArray(selectedMeeting.key_concerns) && selectedMeeting.key_concerns.length > 0 && (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-2">Key Concerns</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(selectedMeeting.key_concerns as any[]).map((concern, i) => (
+                      <Badge key={i} variant="outline">
+                        {typeof concern === "string" ? concern : concern.concern || ""}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">

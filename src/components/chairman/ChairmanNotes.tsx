@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useMeetingNotes } from "@/hooks/useMeetingNotes";
 
@@ -140,7 +141,7 @@ export function ChairmanNotes() {
                           )}
                           {note.decision && (
                             <Badge className={cn("text-[10px] shrink-0 border", DECISION_COLORS[note.decision])}>
-                              {note.decision.replace("_", " ")}
+                              {note.decision.replace(/_/g, " ")}
                             </Badge>
                           )}
                         </div>
@@ -224,17 +225,33 @@ export function ChairmanNotes() {
                     )}
                     Generate Takeaways
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive"
-                    onClick={() => {
-                      deleteNote(selectedNote.id);
-                      setSelectedNoteId(null);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Meeting Note</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete the notes for "{selectedNote.deal_name}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            deleteNote(selectedNote.id);
+                            setSelectedNoteId(null);
+                          }}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
 
@@ -285,7 +302,7 @@ Example:
                       <div>
                         <label className="text-sm font-medium mb-2 block">Decision</label>
                         <Badge className={cn("text-sm px-3 py-1 border", DECISION_COLORS[selectedNote.decision])}>
-                          {selectedNote.decision.replace("_", " ").toUpperCase()}
+                          {selectedNote.decision.replace(/_/g, " ").toUpperCase()}
                         </Badge>
                       </div>
                       <div>

@@ -270,7 +270,7 @@ export function AdminPanel() {
                               </p>
                               <p className="text-xs text-muted-foreground truncate">
                                 {user.roles.length > 0 
-                                  ? user.roles.map(r => r.replace("_", " ")).join(", ")
+                                  ? user.roles.map(r => r.replace(/_/g, " ")).join(", ")
                                   : "No roles assigned"
                                 }
                               </p>
@@ -393,7 +393,7 @@ export function AdminPanel() {
                           <>
                             {selectedUser.roles.map(role => (
                               <Badge key={role} variant="secondary" className="capitalize">
-                                {role.replace("_", " ")}
+                                {role.replace(/_/g, " ")}
                               </Badge>
                             ))}
                             {(selectedUser.roles.includes("admin") || selectedUser.roles.includes("ic_chairman")) ? (
@@ -403,7 +403,7 @@ export function AdminPanel() {
                             ) : (
                               selectedUser.sectors.map(sector => (
                                 <Badge key={sector} variant="outline" className="capitalize">
-                                  {sector.replace("_", " ")}
+                                  {sector.replace(/_/g, " ")}
                                 </Badge>
                               ))
                             )}

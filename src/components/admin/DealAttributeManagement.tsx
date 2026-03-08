@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Pencil, Loader2, Trash2, GripVertical, Settings2 } from "lucide-react";
@@ -47,6 +48,7 @@ export function DealAttributeManagement() {
     display_order: 0,
   });
   const [optionInput, setOptionInput] = useState("");
+  const [attrToDelete, setAttrToDelete] = useState<AttributeDefinition | null>(null);
 
   useEffect(() => {
     fetchAttributes();
@@ -181,17 +183,17 @@ export function DealAttributeManagement() {
     }
   };
 
-  const handleDelete = async (attr: AttributeDefinition) => {
-    if (!confirm(`Delete "${attr.display_name}"? This will remove this attribute from all deals.`)) return;
-
+  const handleDelete = async () => {
+    if (!attrToDelete) return;
     try {
       const { error } = await supabase
         .from("deal_attribute_definitions")
         .delete()
-        .eq("id", attr.id);
+        .eq("id", attrToDelete.id);
 
       if (error) throw error;
       toast.success("Attribute deleted");
+      setAttrToDelete(null);
       fetchAttributes();
     } catch (error) {
       toast.error("Failed to delete attribute");
@@ -345,7 +347,7 @@ export function DealAttributeManagement() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="capitalize">{attr.attribute_type.replace("_", " ")}</span>
+                    <span className="capitalize">{attr.attribute_type.replace(/_/g, " ")}</span>
                     {attr.options.length > 0 && (
                       <span>• {attr.options.length} options</span>
                     )}
@@ -360,10 +362,10 @@ export function DealAttributeManagement() {
                 <Button variant="ghost" size="icon" onClick={() => openEditDialog(attr)}>
                   <Pencil className="w-4 h-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => handleDelete(attr)}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setAttrToDelete(attr)}
                   className="text-destructive hover:text-destructive"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -373,6 +375,23 @@ export function DealAttributeManagement() {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!attrToDelete} onOpenChange={() => setAttrToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Attribute</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{attrToDelete?.display_name}"? This will remove this attribute from all deals and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
