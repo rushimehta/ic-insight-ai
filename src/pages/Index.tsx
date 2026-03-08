@@ -1,67 +1,46 @@
-import { useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { RoleDashboard } from "@/components/dashboard/RoleDashboard";
-import { DocumentUpload } from "@/components/documents/DocumentUpload";
-import { AIChat } from "@/components/chat/AIChat";
-import { QuestionPrep } from "@/components/questions/QuestionPrep";
-import { ICHistory } from "@/components/history/ICHistory";
-import { ICDocumentGenerator } from "@/components/generator/ICDocumentGenerator";
-import { ChairmanNotes } from "@/components/chairman/ChairmanNotes";
-import { AdminPanel } from "@/components/admin/AdminPanel";
-import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
-import { DealKanban } from "@/components/pipeline/DealKanban";
-import { DocumentRepository } from "@/components/repository/DocumentRepository";
-import { CRMDashboard } from "@/components/crm/CRMDashboard";
 import { cn } from "@/lib/utils";
 
-const Index = () => {
-  const [activeTab, setActiveTab] = useState("dashboard");
+const TAB_FROM_PATH: Record<string, string> = {
+  "/": "dashboard",
+  "/dashboard": "dashboard",
+  "/crm": "crm",
+  "/pipeline": "pipeline",
+  "/analytics": "analytics",
+  "/documents": "documents",
+  "/repository": "repository",
+  "/generator": "generator",
+  "/chat": "chat",
+  "/questions": "questions",
+  "/history": "history",
+  "/chairman": "chairman",
+  "/admin": "admin",
+};
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case "dashboard":
-        return <RoleDashboard />;
-      case "crm":
-        return <CRMDashboard />;
-      case "pipeline":
-        return <DealKanban />;
-      case "analytics":
-        return <AnalyticsDashboard />;
-      case "documents":
-        return <DocumentUpload />;
-      case "repository":
-        return <DocumentRepository />;
-      case "generator":
-        return <ICDocumentGenerator />;
-      case "chat":
-        return <AIChat />;
-      case "questions":
-        return <QuestionPrep />;
-      case "history":
-        return <ICHistory />;
-      case "chairman":
-        return <ChairmanNotes />;
-      case "admin":
-        return <AdminPanel />;
-      default:
-        return <RoleDashboard />;
-    }
+const Index = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = TAB_FROM_PATH[location.pathname] || "dashboard";
+
+  const handleTabChange = (tab: string) => {
+    navigate(tab === "dashboard" ? "/" : `/${tab}`);
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
       <main className={cn(
         "transition-all duration-300 p-6 lg:p-8",
         "ml-16 lg:ml-64"
       )}>
         <div className="max-w-7xl mx-auto">
-          {renderContent()}
+          <Outlet />
         </div>
       </main>
-      
+
       {/* Background Glow Effect */}
-      <div 
+      <div
         className="fixed top-0 right-0 w-[500px] h-[500px] pointer-events-none opacity-30"
         style={{ background: "var(--gradient-glow)" }}
       />

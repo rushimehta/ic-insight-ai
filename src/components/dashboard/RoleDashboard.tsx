@@ -218,7 +218,7 @@ export function RoleDashboard() {
               <div className="flex flex-wrap gap-1 mt-1">
                 {sectors.map(sector => (
                   <Badge key={sector} variant="secondary" className="text-xs capitalize">
-                    {sector.replace("_", " ")}
+                    {sector.replace(/_/g, " ")}
                   </Badge>
                 ))}
               </div>

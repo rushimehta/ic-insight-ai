@@ -227,7 +227,7 @@ export function useDeals() {
     if (dealData.deal_name !== undefined) updateData.deal_name = dealData.deal_name;
     if (dealData.company_name !== undefined) updateData.company_name = dealData.company_name;
     if (dealData.sector !== undefined) updateData.sector = dealData.sector;
-    if (dealData.stage !== undefined) updateData.stage = dealData.stage as "sourcing" | "initial_review" | "deep_dive" | "ic_preparation" | "ic_review" | "due_diligence" | "closing" | "closed" | "passed";
+    if (dealData.stage !== undefined) updateData.stage = dealData.stage as "sourcing" | "initial_review" | "due_diligence" | "ic_scheduled" | "ic_complete" | "approved" | "closed" | "passed";
     if (dealData.ic_stage !== undefined) updateData.ic_stage = dealData.ic_stage as "ic1" | "ic2" | "ic3" | "ic4" | "ic_final" | "approved" | "rejected";
     if (dealData.deal_size !== undefined) updateData.deal_size = dealData.deal_size;
     if (dealData.description !== undefined) updateData.description = dealData.description;

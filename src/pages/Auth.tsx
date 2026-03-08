@@ -90,27 +90,23 @@ export default function Auth() {
     
     try {
       if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
+        const { error } = await signIn(email, password);
+
         if (error) {
           // Check if MFA is required
           if (error.message.includes("MFA") || error.message.includes("mfa")) {
             // Need to handle MFA challenge
             const { data: factorsData } = await supabase.auth.mfa.listFactors();
             const verifiedFactors = factorsData?.totp?.filter(f => f.status === "verified") || [];
-            
+
             if (verifiedFactors.length > 0) {
               const factorId = verifiedFactors[0].id;
-              // Create challenge
               const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
                 factorId,
               });
-              
+
               if (challengeError) throw challengeError;
-              
+
               setMfaFactorId(factorId);
               setMfaChallengeId(challengeData.id);
               setShowMFA(true);
@@ -118,13 +114,13 @@ export default function Auth() {
               return;
             }
           }
-          
+
           if (error.message.includes("Invalid login credentials")) {
             toast.error("Invalid email or password");
           } else {
             toast.error(error.message);
           }
-        } else if (data?.session) {
+        } else {
           // Check if user has MFA enrolled - if AAL is 1, they might need to verify
           const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
           
