@@ -210,9 +210,9 @@ export function AnalyticsDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div className="opacity-0 animate-fade-in">
-        <h2 className="text-2xl font-semibold">Analytics</h2>
-        <p className="text-muted-foreground mt-1">
-          Investment committee performance metrics and trends. <span className="text-primary">Click any chart element to drill down.</span>
+        <h2 className="text-xl font-semibold tracking-tight">Analytics & Intelligence</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          IC performance metrics and deal flow trends. Click any chart element to drill down.
         </p>
       </div>
 
