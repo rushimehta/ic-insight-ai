@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Shield, Building2, Search, Loader2, AlertTriangle, UserPlus, Link2, Settings2, Sliders } from "lucide-react";
+import { Users, Shield, Building2, Search, Loader2, AlertTriangle, UserPlus, Link2, Settings2, Sliders, Globe, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,6 +13,8 @@ import { SectorManagement } from "@/components/admin/SectorManagement";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { LookupManagement } from "@/components/admin/LookupManagement";
 import { DealAttributeManagement } from "@/components/admin/DealAttributeManagement";
+import { RoleManagement } from "@/components/admin/RoleManagement";
+import { SSOConfiguration } from "@/components/admin/SSOConfiguration";
 import { SharePointIntegration } from "@/components/integrations/SharePointIntegration";
 import type { AppRole, SectorType } from "@/hooks/useUserPermissions";
 
@@ -185,6 +187,14 @@ export function AdminPanel() {
           <TabsTrigger value="add-user" className="flex items-center gap-2">
             <UserPlus className="w-4 h-4" />
             Add User
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4" />
+            Roles
+          </TabsTrigger>
+          <TabsTrigger value="sso" className="flex items-center gap-2">
+            <Globe className="w-4 h-4" />
+            SSO
           </TabsTrigger>
           <TabsTrigger value="sectors" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
@@ -420,6 +430,18 @@ export function AdminPanel() {
 
         <TabsContent value="add-user">
           <UserManagement />
+        </TabsContent>
+
+        <TabsContent value="roles">
+          <div className="glass rounded-xl p-6">
+            <RoleManagement />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="sso">
+          <div className="glass rounded-xl p-6">
+            <SSOConfiguration />
+          </div>
         </TabsContent>
 
         <TabsContent value="sectors">

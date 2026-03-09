@@ -147,17 +147,25 @@ export function QuestionPrep() {
     fetchQuestions(viewMode === "deal-team" ? "deal_team" : "ic_member");
   }, [viewMode]);
 
+  // Always use fallback data for rich content - merge DB questions if available
+  const fallbackQuestions = viewMode === "deal-team" ? fallbackDealTeamQuestions : fallbackICMemberQuestions;
   const questions: QuestionDetail[] = dbQuestions.length > 0
-    ? dbQuestions.map(q => ({
-        ...q,
-        guidance: "",
-        sampleAnswer: "",
-        commonMistakes: [],
-        relatedQuestions: [],
-        dataPointsNeeded: [],
-        icContext: "",
-      }))
-    : (viewMode === "deal-team" ? fallbackDealTeamQuestions : fallbackICMemberQuestions);
+    ? dbQuestions.map(q => {
+        // Try to match with a fallback question for rich content
+        const matchedFallback = fallbackQuestions.find(fq =>
+          fq.category === q.category || fq.question_text.substring(0, 30) === q.question_text.substring(0, 30)
+        );
+        return {
+          ...q,
+          guidance: matchedFallback?.guidance || "Review the IC's historical feedback on similar questions. Prepare data-driven responses with specific metrics and supporting analysis.",
+          sampleAnswer: matchedFallback?.sampleAnswer || "Prepare a structured response covering: (1) the specific data point requested, (2) supporting evidence from due diligence, (3) risk mitigation factors, and (4) comparison to portfolio precedents.",
+          commonMistakes: matchedFallback?.commonMistakes || ["Being unprepared with specific data", "Providing vague or qualitative answers", "Not addressing the underlying concern"],
+          relatedQuestions: matchedFallback?.relatedQuestions || ["What's the downside scenario?", "How does this compare to prior deals?"],
+          dataPointsNeeded: matchedFallback?.dataPointsNeeded || ["Supporting financial data", "Comparable transaction data", "Due diligence findings"],
+          icContext: matchedFallback?.icContext || "IC members typically probe this area to assess deal team preparedness and analytical rigor.",
+        };
+      })
+    : fallbackQuestions;
 
   const toggleQuestion = (id: string) => {
     setExpandedQuestionId(expandedQuestionId === id ? null : id);
@@ -295,12 +303,23 @@ export function QuestionPrep() {
                           </span>
                         )}
                       </div>
+                      {/* Preview snippet when collapsed */}
+                      {!isExpanded && question.sampleAnswer && (
+                        <p className="text-xs text-muted-foreground mt-2 line-clamp-1 italic">
+                          <span className="text-emerald-500 font-medium not-italic">Suggested Response:</span> {question.sampleAnswer.substring(0, 120)}...
+                        </p>
+                      )}
                     </div>
-                    {isExpanded ? (
-                      <ChevronDown className="w-5 h-5 text-primary shrink-0 mt-1" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />
-                    )}
+                    <div className="flex flex-col items-center gap-1 shrink-0 mt-1">
+                      {isExpanded ? (
+                        <ChevronDown className="w-5 h-5 text-primary" />
+                      ) : (
+                        <>
+                          <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                          <span className="text-[9px] text-muted-foreground">Expand</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -318,16 +337,20 @@ export function QuestionPrep() {
                       </p>
                     </div>
 
-                    {/* Sample Answer */}
+                    {/* Suggested Response / Standard Answer */}
                     {question.sampleAnswer && (
                       <div>
                         <h4 className="text-xs font-semibold uppercase tracking-wider text-emerald-500 mb-2 flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Strong Sample Answer
+                          Suggested Response
                         </h4>
-                        <p className="text-sm bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3">
-                          {question.sampleAnswer}
-                        </p>
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4">
+                          <p className="text-sm leading-relaxed">{question.sampleAnswer}</p>
+                          <div className="mt-3 pt-2 border-t border-emerald-500/10 flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-500">Standard Response</Badge>
+                            <span className="text-[10px] text-muted-foreground">Customize based on specific deal parameters</span>
+                          </div>
+                        </div>
                       </div>
                     )}
 
