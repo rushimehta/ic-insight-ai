@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Mail, Lock, User, ArrowRight, Shield, KeyRound } from "lucide-react";
+import { Loader2, Mail, Lock, User, ArrowRight, Shield, KeyRound, Building2 } from "lucide-react";
 import { z } from "zod";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { SSOLogin } from "@/components/auth/SSOLogin";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
@@ -28,6 +29,17 @@ export default function Auth() {
   const [mfaCode, setMfaCode] = useState("");
   const [isVerifyingMFA, setIsVerifyingMFA] = useState(false);
   
+  // SSO state
+  const [showSSO, setShowSSO] = useState(false);
+
+  // MFA enrollment state (for new account activation)
+  const [showMFAEnrollment, setShowMFAEnrollment] = useState(false);
+  const [mfaQRCode, setMfaQRCode] = useState<string>("");
+  const [mfaSecret, setMfaSecret] = useState<string>("");
+  const [enrollFactorId, setEnrollFactorId] = useState<string>("");
+  const [enrollCode, setEnrollCode] = useState("");
+  const [isEnrolling, setIsEnrolling] = useState(false);
+
   // Forgot password state
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
@@ -157,8 +169,29 @@ export default function Auth() {
             toast.error(error.message);
           }
         } else {
-          toast.success("Account created successfully!");
-          navigate("/");
+          // Enforce MFA enrollment for new non-SSO accounts
+          try {
+            const { data: enrollData, error: enrollError } = await supabase.auth.mfa.enroll({
+              factorType: "totp",
+              friendlyName: "Authenticator App",
+            });
+
+            if (enrollError) {
+              console.error("MFA enrollment error:", enrollError);
+              toast.success("Account created! You can set up MFA later in settings.");
+              navigate("/");
+            } else if (enrollData) {
+              setMfaQRCode(enrollData.totp.qr_code);
+              setMfaSecret(enrollData.totp.secret);
+              setEnrollFactorId(enrollData.id);
+              setShowMFAEnrollment(true);
+              setIsLoading(false);
+              return;
+            }
+          } catch {
+            toast.success("Account created successfully!");
+            navigate("/");
+          }
         }
       }
     } catch (error) {
@@ -204,6 +237,41 @@ export default function Auth() {
     }
   };
 
+  const handleMFAEnrollVerify = async () => {
+    if (enrollCode.length !== 6) return;
+    setIsEnrolling(true);
+
+    try {
+      // Challenge the newly enrolled factor
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: enrollFactorId,
+      });
+      if (challengeError) throw challengeError;
+
+      // Verify with the user's code
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: enrollFactorId,
+        challengeId: challengeData.id,
+        code: enrollCode,
+      });
+      if (verifyError) throw verifyError;
+
+      toast.success("MFA enabled successfully! Your account is now secured.");
+      navigate("/");
+    } catch (error: any) {
+      console.error("MFA enrollment verification error:", error);
+      toast.error(error.message || "Invalid code. Please try again.");
+      setEnrollCode("");
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
+  const handleSkipMFA = () => {
+    toast.info("You can set up MFA later in Settings > Security.");
+    navigate("/");
+  };
+
   const handleBackFromMFA = async () => {
     await supabase.auth.signOut();
     setShowMFA(false);
@@ -211,6 +279,86 @@ export default function Auth() {
     setMfaChallengeId(null);
     setMfaCode("");
   };
+
+  // MFA enrollment screen (after signup)
+  if (showMFAEnrollment) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8 opacity-0 animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center mx-auto mb-4 shadow-glow">
+              <Shield className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold">Secure Your Account</h1>
+            <p className="text-muted-foreground mt-2">
+              Set up two-factor authentication to protect your account
+            </p>
+          </div>
+
+          <div className="glass rounded-2xl p-8 opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
+            <div className="space-y-6">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Scan this QR code with your authenticator app (Google Authenticator, Authy, or Microsoft Authenticator)
+                </p>
+                {mfaQRCode && (
+                  <div className="flex justify-center mb-4">
+                    <img src={mfaQRCode} alt="MFA QR Code" className="w-48 h-48 rounded-lg border border-border" />
+                  </div>
+                )}
+                {mfaSecret && (
+                  <div className="bg-secondary/50 rounded-lg p-3 mb-4">
+                    <p className="text-[10px] text-muted-foreground mb-1">Or enter this key manually:</p>
+                    <code className="text-xs font-mono select-all">{mfaSecret}</code>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-center mb-3">Enter the 6-digit verification code</p>
+                <div className="flex justify-center">
+                  <InputOTP maxLength={6} value={enrollCode} onChange={setEnrollCode}>
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleMFAEnrollVerify}
+                variant="glow"
+                className="w-full"
+                disabled={enrollCode.length !== 6 || isEnrolling}
+              >
+                {isEnrolling ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    Enable Two-Factor Authentication
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+
+              <Button variant="ghost" className="w-full text-xs" onClick={handleSkipMFA}>
+                Skip for now (not recommended)
+              </Button>
+            </div>
+          </div>
+
+          <p className="text-center text-[10px] text-muted-foreground mt-4">
+            MFA is required for all non-SSO accounts to comply with security policy
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Forgot password screen
   if (showForgotPassword) {
@@ -474,16 +622,46 @@ export default function Auth() {
               }}
               className="text-sm text-muted-foreground hover:text-primary transition-colors"
             >
-              {isLogin 
-                ? "Don't have an account? Sign up" 
+              {isLogin
+                ? "Don't have an account? Sign up"
                 : "Already have an account? Sign in"}
             </button>
           </div>
+
+          {/* SSO Divider */}
+          {isLogin && !showSSO && (
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mt-4 gap-2"
+                onClick={() => setShowSSO(true)}
+              >
+                <Building2 className="w-4 h-4" />
+                Sign in with Enterprise SSO
+              </Button>
+            </div>
+          )}
+
+          {/* SSO Providers */}
+          {showSSO && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <SSOLogin onBack={() => setShowSSO(false)} />
+            </div>
+          )}
         </div>
-        
+
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground mt-6 opacity-0 animate-fade-in" style={{ animationDelay: "200ms" }}>
-          Your IC preparation data is encrypted and secure
+          Your IC preparation data is encrypted and secure &middot; SOC 2 Type II compliant
         </p>
       </div>
     </div>

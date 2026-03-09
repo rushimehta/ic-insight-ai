@@ -845,34 +845,137 @@ export function RoleDashboard() {
           </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <InsightCard
-            type="warning"
-            title="Valuation Alert: Project Delta"
-            description="EV/EBITDA of 14.1x is 18% above sector median for insurance platforms. Historical IC approval at this multiple is 42%."
-            source="AI Valuation Analysis"
-            delay={400}
-          />
-          <InsightCard
-            type="trend"
-            title="Healthcare Multiples Expanding"
-            description="Healthcare services EV/EBITDA expanded from 11.2x to 12.6x over 12 months. Project Atlas positioned favorably at 12.5x entry."
-            source="Market Intelligence"
-            delay={450}
-          />
-          <InsightCard
-            type="insight"
-            title="IC Pattern: Key-Person Risk"
-            description="Last 8 rejected deals had management concentration as a top-3 concern. Project Beacon should address key-person dependencies before IC-1."
-            source="IC Pattern Analysis"
-            delay={500}
-          />
-          <InsightCard
-            type="warning"
-            title="Due Diligence Bottleneck"
-            description="Project Beacon (15 days) and Project Keystone (11 days) in DD without QoE reports. Avg completion at peer funds: 10 days."
-            source="Process Monitoring"
-            delay={550}
-          />
+          <div className="cursor-pointer" onClick={() => navigate("/chat")}>
+            <InsightCard
+              type="warning"
+              title="Valuation Alert: Project Delta"
+              description="EV/EBITDA of 14.1x is 18% above sector median for insurance platforms. Historical IC approval at this multiple is 42%."
+              source="AI Valuation Analysis"
+              delay={400}
+            />
+          </div>
+          <div className="cursor-pointer" onClick={() => navigate("/analytics")}>
+            <InsightCard
+              type="trend"
+              title="Healthcare Multiples Expanding"
+              description="Healthcare services EV/EBITDA expanded from 11.2x to 12.6x over 12 months. Project Atlas positioned favorably at 12.5x entry."
+              source="Market Intelligence"
+              delay={450}
+            />
+          </div>
+          <div className="cursor-pointer" onClick={() => navigate("/questions")}>
+            <InsightCard
+              type="insight"
+              title="IC Pattern: Key-Person Risk"
+              description="Last 8 rejected deals had management concentration as a top-3 concern. Project Beacon should address key-person dependencies before IC-1."
+              source="IC Pattern Analysis"
+              delay={500}
+            />
+          </div>
+          <div className="cursor-pointer" onClick={() => navigate("/pipeline")}>
+            <InsightCard
+              type="warning"
+              title="Due Diligence Bottleneck"
+              description="Project Beacon (15 days) and Project Keystone (11 days) in DD without QoE reports. Avg completion at peer funds: 10 days."
+              source="Process Monitoring"
+              delay={550}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Fund Performance Summary Row ────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 opacity-0 animate-fade-in" style={{ animationDelay: "400ms" }}>
+        {/* Portfolio Returns */}
+        <div
+          className="glass rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group"
+          onClick={() => navigate("/analytics")}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary" />
+              Fund VII Portfolio Returns
+            </h3>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: "Net IRR", value: "18.4%", sub: "+2.1pp vs benchmark", positive: true },
+              { label: "Gross MOIC", value: "2.3x", sub: "Fund VI: 2.1x", positive: true },
+              { label: "DPI", value: "0.4x", sub: "Early vintage" },
+              { label: "TVPI", value: "1.8x", sub: "Top quartile", positive: true },
+            ].map((m) => (
+              <div key={m.label}>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{m.label}</p>
+                <p className="text-lg font-bold tabular-nums">{m.value}</p>
+                <p className={cn("text-[11px]", m.positive ? "text-emerald-500" : "text-muted-foreground")}>{m.sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent IC Decisions */}
+        <div
+          className="glass rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group"
+          onClick={() => navigate("/history")}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary" />
+              Recent IC Decisions
+            </h3>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+          <div className="space-y-2.5">
+            {[
+              { deal: "Project Echo", outcome: "Approved", date: "Mar 4", badge: "badge-positive" },
+              { deal: "Project Citadel", outcome: "Approved", date: "Mar 2", badge: "badge-positive" },
+              { deal: "Project Granite", outcome: "Passed", date: "Feb 28", badge: "badge-negative" },
+              { deal: "Project Delta", outcome: "Deferred", date: "Feb 25", badge: "badge-neutral" },
+              { deal: "Project Falcon", outcome: "IC-1 Set", date: "Feb 22", badge: "badge-info" },
+            ].map((d) => (
+              <div key={d.deal} className="flex items-center justify-between text-sm">
+                <span className="font-medium truncate">{d.deal}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground tabular-nums">{d.date}</span>
+                  <Badge variant="outline" className={cn("text-[10px] font-medium", d.badge)}>{d.outcome}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Memory & Learning */}
+        <div
+          className="glass rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group"
+          onClick={() => navigate("/chat")}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              AI Memory & Learning
+            </h3>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+          <div className="space-y-3">
+            {[
+              { label: "Knowledge Chunks", value: "2,847", progress: 78 },
+              { label: "Deal Patterns", value: "342", progress: 65 },
+              { label: "IC Feedback Loops", value: "156", progress: 52 },
+              { label: "Sector Insights", value: "89", progress: 41 },
+            ].map((item) => (
+              <div key={item.label}>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="text-muted-foreground text-xs">{item.label}</span>
+                  <span className="font-medium tabular-nums text-xs">{item.value}</span>
+                </div>
+                <Progress value={item.progress} className="h-1.5" />
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-3">
+            Last trained: 2 hours ago &middot; 98.4% confidence
+          </p>
         </div>
       </div>
     </div>

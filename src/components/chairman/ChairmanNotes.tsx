@@ -477,6 +477,92 @@ Key presentation points:
                       </Collapsible>
                     )}
 
+                    {/* Chairman's Risk Assessment */}
+                    <div>
+                      <label className="text-sm font-medium mb-2 block flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-amber-500" />
+                        Chairman's Risk Assessment
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {[
+                          { label: "Valuation Risk", field: "risk_valuation" },
+                          { label: "Execution Risk", field: "risk_execution" },
+                          { label: "Market / Cycle Risk", field: "risk_market" },
+                          { label: "Management Risk", field: "risk_management" },
+                          { label: "Leverage Risk", field: "risk_leverage" },
+                          { label: "Exit Risk", field: "risk_exit" },
+                        ].map(risk => {
+                          const value = (selectedNote as any)[risk.field] || "";
+                          return (
+                            <div key={risk.field} className="bg-secondary/30 rounded-lg p-2.5">
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">{risk.label}</p>
+                              <div className="flex items-center gap-1">
+                                {["low", "moderate", "high"].map(level => (
+                                  <button
+                                    key={level}
+                                    onClick={() => handleFieldChange(risk.field, value === level ? "" : level)}
+                                    className={cn(
+                                      "text-[10px] px-2 py-0.5 rounded-full border capitalize transition-all",
+                                      value === level
+                                        ? level === "low"
+                                          ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/30"
+                                          : level === "moderate"
+                                          ? "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                                          : "bg-red-500/20 text-red-500 border-red-500/30"
+                                        : "border-transparent text-muted-foreground/50 hover:text-muted-foreground"
+                                    )}
+                                  >
+                                    {level}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Conviction Score */}
+                    <div>
+                      <label className="text-sm font-medium mb-2 block flex items-center gap-2">
+                        <Target className="w-4 h-4 text-primary" />
+                        Deal Conviction Score (Chairman's Assessment)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => {
+                          const currentScore = (selectedNote as any).conviction_score || 0;
+                          return (
+                            <button
+                              key={score}
+                              onClick={() => handleFieldChange("conviction_score", score === currentScore ? 0 : score)}
+                              className={cn(
+                                "w-8 h-8 rounded-lg text-xs font-semibold transition-all border",
+                                score <= currentScore
+                                  ? score <= 3
+                                    ? "bg-red-500/20 text-red-500 border-red-500/30"
+                                    : score <= 6
+                                    ? "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                                    : "bg-emerald-500/20 text-emerald-500 border-emerald-500/30"
+                                  : "border-border/50 text-muted-foreground/30 hover:border-border"
+                              )}
+                            >
+                              {score}
+                            </button>
+                          );
+                        })}
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {(selectedNote as any).conviction_score
+                            ? (selectedNote as any).conviction_score <= 3
+                              ? "Low conviction"
+                              : (selectedNote as any).conviction_score <= 6
+                              ? "Moderate conviction"
+                              : "High conviction"
+                            : "Not rated"
+                          }
+                        </span>
+                      </div>
+                    </div>
+
                     {/* Further Investigation */}
                     <div>
                       <label className="text-sm font-medium mb-2 block flex items-center gap-2">
@@ -532,31 +618,159 @@ Key presentation points:
                       </div>
                     </div>
 
-                    {/* IC Vote Tracker */}
+                    {/* IC Committee Voting Grid */}
                     <Collapsible open={expandedSections.vote}>
                       <CollapsibleTrigger onClick={() => toggleSection("vote")} className="flex items-center justify-between w-full text-left">
                         <h4 className="font-medium text-sm flex items-center gap-2">
                           <Users className="w-4 h-4 text-primary" />
-                          IC Member Votes
+                          IC Committee Votes
                         </h4>
                         {expandedSections.vote ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-3">
-                        <Textarea
-                          value={(selectedNote as any).vote_record || ""}
-                          onChange={(e) => handleFieldChange("vote_record", e.target.value)}
-                          placeholder="VOTE RECORD:
-Robert Chen (Chairman): APPROVE - Strong conviction in business quality
-Sarah Williams (Partner): APPROVE - Supportive, likes recurring revenue profile
-David Kim (Partner): APPROVE WITH CONDITIONS - Wants QofE before IC3
-Jennifer Lee (Partner): APPROVE - Regulatory moat is compelling
-Marcus Brown (Operating Partner): APPROVE WITH CONDITIONS - Integration playbook required
+                        {/* Voting Grid */}
+                        <div className="border border-border rounded-lg overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-secondary/50">
+                                <th className="text-left p-3 font-medium text-xs uppercase tracking-wider">IC Member</th>
+                                <th className="text-left p-3 font-medium text-xs uppercase tracking-wider w-20">Role</th>
+                                <th className="text-center p-3 font-medium text-xs uppercase tracking-wider w-24">Vote</th>
+                                <th className="text-left p-3 font-medium text-xs uppercase tracking-wider">Comment</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50">
+                              {[
+                                { name: "Robert Chen", role: "Chairman", defaultVote: "approve" },
+                                { name: "Sarah Williams", role: "Partner", defaultVote: "approve" },
+                                { name: "David Kim", role: "Partner", defaultVote: "approve" },
+                                { name: "Jennifer Lee", role: "Partner", defaultVote: "approve" },
+                                { name: "Marcus Brown", role: "Op. Partner", defaultVote: "approve" },
+                              ].map((member, idx) => {
+                                const voteData = JSON.parse((selectedNote as any).vote_grid || "{}");
+                                const memberVote = voteData[member.name] || { vote: "", comment: "" };
+                                return (
+                                  <tr key={idx} className="hover:bg-secondary/20">
+                                    <td className="p-3">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">
+                                          {member.name.split(" ").map(n => n[0]).join("")}
+                                        </div>
+                                        <span className="font-medium text-sm">{member.name}</span>
+                                      </div>
+                                    </td>
+                                    <td className="p-3 text-xs text-muted-foreground">{member.role}</td>
+                                    <td className="p-3">
+                                      <div className="flex items-center justify-center gap-1">
+                                        {VOTE_OPTIONS.map(option => {
+                                          const isSelected = memberVote.vote === option.value;
+                                          return (
+                                            <button
+                                              key={option.value}
+                                              onClick={() => {
+                                                const existing = JSON.parse((selectedNote as any).vote_grid || "{}");
+                                                existing[member.name] = {
+                                                  ...existing[member.name],
+                                                  vote: isSelected ? "" : option.value,
+                                                };
+                                                handleFieldChange("vote_grid", JSON.stringify(existing));
+                                              }}
+                                              className={cn(
+                                                "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
+                                                isSelected
+                                                  ? option.value === "approve"
+                                                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-500"
+                                                    : option.value === "reject"
+                                                    ? "bg-red-500/20 border-red-500/40 text-red-500"
+                                                    : option.value === "defer"
+                                                    ? "bg-amber-500/20 border-amber-500/40 text-amber-500"
+                                                    : "bg-secondary border-border text-muted-foreground"
+                                                  : "border-border/50 text-muted-foreground/50 hover:border-border hover:text-muted-foreground"
+                                              )}
+                                              title={option.label}
+                                            >
+                                              <option.icon className="w-3.5 h-3.5" />
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </td>
+                                    <td className="p-3">
+                                      <Input
+                                        value={memberVote.comment || ""}
+                                        onChange={(e) => {
+                                          const existing = JSON.parse((selectedNote as any).vote_grid || "{}");
+                                          existing[member.name] = {
+                                            ...existing[member.name],
+                                            comment: e.target.value,
+                                          };
+                                          handleFieldChange("vote_grid", JSON.stringify(existing));
+                                        }}
+                                        placeholder="Rationale / conditions..."
+                                        className="h-7 text-xs border-transparent hover:border-border focus:border-primary"
+                                      />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
 
-RESULT: 5-0 APPROVE (2 with conditions)
-QUORUM: Met (5 of 5 voting members present)"
-                          rows={8}
-                          className="text-sm font-mono"
-                        />
+                        {/* Vote Summary */}
+                        {(() => {
+                          const voteData = JSON.parse((selectedNote as any).vote_grid || "{}");
+                          const votes = Object.values(voteData) as { vote: string; comment: string }[];
+                          const approves = votes.filter(v => v.vote === "approve").length;
+                          const rejects = votes.filter(v => v.vote === "reject").length;
+                          const defers = votes.filter(v => v.vote === "defer").length;
+                          const abstains = votes.filter(v => v.vote === "abstain").length;
+                          const totalVotes = approves + rejects + defers + abstains;
+
+                          if (totalVotes === 0) return null;
+
+                          return (
+                            <div className="mt-3 flex items-center gap-4 p-3 bg-secondary/30 rounded-lg">
+                              <span className="text-xs font-medium">Result:</span>
+                              <div className="flex items-center gap-3 text-xs">
+                                {approves > 0 && (
+                                  <span className="flex items-center gap-1 text-emerald-500">
+                                    <ThumbsUp className="w-3 h-3" /> {approves} Approve
+                                  </span>
+                                )}
+                                {rejects > 0 && (
+                                  <span className="flex items-center gap-1 text-red-500">
+                                    <ThumbsDown className="w-3 h-3" /> {rejects} Reject
+                                  </span>
+                                )}
+                                {defers > 0 && (
+                                  <span className="flex items-center gap-1 text-amber-500">
+                                    <AlertCircle className="w-3 h-3" /> {defers} Defer
+                                  </span>
+                                )}
+                                {abstains > 0 && (
+                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                    {abstains} Abstain
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground ml-auto">
+                                Quorum: {totalVotes >= 3 ? "Met" : "Not Met"} ({totalVotes}/5)
+                              </span>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Legacy text field for additional notes */}
+                        <div className="mt-3">
+                          <Textarea
+                            value={(selectedNote as any).vote_record || ""}
+                            onChange={(e) => handleFieldChange("vote_record", e.target.value)}
+                            placeholder="Additional voting notes, dissent opinions, or special considerations..."
+                            rows={3}
+                            className="text-sm"
+                          />
+                        </div>
                       </CollapsibleContent>
                     </Collapsible>
 

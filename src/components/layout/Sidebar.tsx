@@ -21,6 +21,7 @@ import {
   Database,
   Library,
   Gem,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +53,7 @@ const navItems: NavItem[] = [
   { icon: Library, label: "IC Archive", id: "repository", section: "ic" },
   { icon: Upload, label: "Upload IC Decks", id: "documents", section: "ic" },
   { icon: FileEdit, label: "IC Memo Builder", id: "generator", section: "ic" },
+  { icon: CalendarDays, label: "IC Calendar", id: "calendar", section: "ic" },
   { icon: ClipboardList, label: "IC Meeting Tracker", id: "chairman", section: "ic" },
   { icon: History, label: "IC History", id: "history", section: "ic" },
   { icon: MessageSquare, label: "Deal Advisor AI", id: "chat", section: "ai" },
