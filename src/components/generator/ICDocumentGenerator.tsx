@@ -77,16 +77,16 @@ export function ICDocumentGenerator() {
     <div className="space-y-6">
       {/* Header */}
       <div className="opacity-0 animate-fade-in">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-            <Briefcase className="w-6 h-6 text-primary" />
-          </div>
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold">IC Memo Builder</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-xl font-semibold tracking-tight">IC Memo Builder</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Build comprehensive investment memoranda for PE deal presentations
             </p>
           </div>
+          <Badge variant="outline" className="text-xs font-medium">
+            {drafts.length} memo{drafts.length !== 1 ? "s" : ""}
+          </Badge>
         </div>
       </div>
 
@@ -160,11 +160,13 @@ export function ICDocumentGenerator() {
         <div className="lg:col-span-9">
           {!selectedDraft ? (
             <div className="glass rounded-xl p-12 text-center">
-              <Briefcase className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-lg font-medium mb-2">Build Your IC Memo</h3>
-              <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
-                Create a comprehensive PE investment memorandum with deal economics, management assessment,
-                value creation plan, and risk analysis
+              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Briefcase className="w-7 h-7 text-primary/60" />
+              </div>
+              <h3 className="text-base font-semibold mb-1.5">Build Your IC Memo</h3>
+              <p className="text-muted-foreground text-sm mb-5 max-w-md mx-auto leading-relaxed">
+                Create a comprehensive PE investment memorandum covering deal economics, management assessment,
+                value creation strategy, and risk analysis
               </p>
               <Button variant="glow" onClick={handleCreateDraft}>
                 <Plus className="w-4 h-4 mr-2" />
@@ -175,13 +177,13 @@ export function ICDocumentGenerator() {
             <div className="glass rounded-xl overflow-hidden">
               <div className="flex items-center justify-between p-4 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                    <Briefcase className="w-5 h-5 text-primary" />
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Briefcase className="w-4.5 h-4.5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-medium">{selectedDraft.deal_name}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Last updated {new Date(selectedDraft.updated_at).toLocaleDateString()}
+                    <h3 className="font-semibold text-sm">{selectedDraft.deal_name}</h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Last updated {new Date(selectedDraft.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} &middot; {getSectorDisplayName(selectedDraft.sector)}
                     </p>
                   </div>
                 </div>

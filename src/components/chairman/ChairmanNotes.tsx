@@ -83,16 +83,11 @@ export function ChairmanNotes() {
     <div className="space-y-6">
       {/* Header */}
       <div className="opacity-0 animate-fade-in">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-            <ClipboardList className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold">IC Meeting Tracker</h2>
-            <p className="text-muted-foreground">
-              Record IC discussions, votes, conditions, action items, and generate structured takeaways
-            </p>
-          </div>
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">IC Meeting Tracker</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Record IC discussions, voting outcomes, conditions, and action items
+          </p>
         </div>
       </div>
 

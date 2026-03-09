@@ -2,20 +2,16 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  FileText,
   MessageSquare,
   HelpCircle,
   History,
   ChevronLeft,
-  Target,
   LogOut,
-  User,
   FileEdit,
   ClipboardList,
   Shield,
   BarChart3,
   Kanban,
-  FolderOpen,
   Settings,
   Briefcase,
   Sun,
@@ -23,7 +19,8 @@ import {
   Monitor,
   Upload,
   Database,
-  Library
+  Library,
+  Gem,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,9 +45,9 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: "Deal Command Center", id: "dashboard", section: "core" },
+  { icon: LayoutDashboard, label: "Portfolio Overview", id: "dashboard", section: "core" },
   { icon: Briefcase, label: "Deal CRM", id: "crm", section: "deals" },
-  { icon: Kanban, label: "Deal Pipeline", id: "pipeline", section: "deals" },
+  { icon: Kanban, label: "Pipeline Board", id: "pipeline", section: "deals" },
   { icon: BarChart3, label: "Analytics", id: "analytics", section: "deals" },
   { icon: Library, label: "IC Archive", id: "repository", section: "ic" },
   { icon: Upload, label: "Upload IC Decks", id: "documents", section: "ic" },
@@ -67,7 +64,7 @@ const sectionLabels: Record<string, string> = {
   core: "",
   deals: "DEAL MANAGEMENT",
   ic: "INVESTMENT COMMITTEE",
-  ai: "AI & INSIGHTS",
+  ai: "AI & INTELLIGENCE",
   integrations: "INTEGRATIONS",
   admin: "ADMINISTRATION",
 };
@@ -113,47 +110,47 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     <aside
       className={cn(
         "fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 z-50",
-        collapsed ? "w-16" : "w-64"
+        collapsed ? "w-16" : "w-60"
       )}
     >
       {/* Logo */}
-      <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
-        <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center glow">
-          <Target className="w-5 h-5 text-primary" />
+      <div className="p-4 flex items-center gap-3 border-b border-sidebar-border h-[60px]">
+        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+          <Gem className="w-4 h-4 text-primary-foreground" />
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-lg font-semibold text-foreground">Deal IC Advisor</h1>
-            <p className="text-xs text-muted-foreground">PE Investment Intelligence</p>
+            <h1 className="text-sm font-bold tracking-tight text-foreground">IC Insight AI</h1>
+            <p className="text-[10px] text-muted-foreground font-medium tracking-wide">PE DEAL INTELLIGENCE</p>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {groupedItems.map((group, gi) => (
           <div key={gi}>
             {!collapsed && sectionLabels[group.section] && (
-              <div className="text-[10px] font-semibold text-muted-foreground/60 tracking-wider px-3 pt-4 pb-1.5">
+              <div className="text-[10px] font-semibold text-muted-foreground/50 tracking-widest px-3 pt-5 pb-1.5 uppercase">
                 {sectionLabels[group.section]}
               </div>
             )}
             {collapsed && gi > 0 && sectionLabels[group.section] && (
-              <div className="border-t border-sidebar-border my-2" />
+              <div className="border-t border-sidebar-border my-2 mx-2" />
             )}
             {group.items.map((item) => (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                  "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all duration-150",
                   activeTab === item.id
-                    ? "bg-primary/10 text-primary border border-primary/20"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 )}
               >
-                <item.icon className="w-4.5 h-4.5 shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
+                <item.icon className="w-4 h-4 shrink-0" />
+                {!collapsed && <span className="truncate">{item.label}</span>}
               </button>
             ))}
           </div>
@@ -161,22 +158,22 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       </nav>
 
       {/* Bottom - User Menu */}
-      <div className="p-3 border-t border-sidebar-border space-y-2">
+      <div className="p-2 border-t border-sidebar-border space-y-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200",
+                "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all duration-150",
                 collapsed && "justify-center"
               )}
             >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                <User className="w-4 h-4 text-primary" />
+              <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0 text-[11px] font-semibold text-primary">
+                {userName.charAt(0).toUpperCase()}
               </div>
               {!collapsed && (
                 <div className="flex-1 text-left overflow-hidden">
-                  <p className="font-medium text-foreground truncate">{userName}</p>
-                  <p className="text-xs text-muted-foreground truncate capitalize">{displayRole}</p>
+                  <p className="text-[13px] font-medium text-foreground truncate">{userName}</p>
+                  <p className="text-[10px] text-muted-foreground truncate capitalize">{displayRole}</p>
                 </div>
               )}
             </button>
@@ -205,17 +202,17 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             <DropdownMenuItem onClick={() => setTheme("light")}>
               <Sun className="w-4 h-4 mr-2" />
               Light
-              {theme === "light" && <span className="ml-auto text-primary">&#10003;</span>}
+              {theme === "light" && <span className="ml-auto text-primary text-xs">Active</span>}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTheme("dark")}>
               <Moon className="w-4 h-4 mr-2" />
               Dark
-              {theme === "dark" && <span className="ml-auto text-primary">&#10003;</span>}
+              {theme === "dark" && <span className="ml-auto text-primary text-xs">Active</span>}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTheme("system")}>
               <Monitor className="w-4 h-4 mr-2" />
               System
-              {theme === "system" && <span className="ml-auto text-primary">&#10003;</span>}
+              {theme === "system" && <span className="ml-auto text-primary text-xs">Active</span>}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
@@ -229,9 +226,9 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           variant="ghost"
           size="icon"
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center"
+          className="w-full flex items-center justify-center h-7"
         >
-          <ChevronLeft className={cn("w-5 h-5 transition-transform", collapsed && "rotate-180")} />
+          <ChevronLeft className={cn("w-4 h-4 transition-transform", collapsed && "rotate-180")} />
         </Button>
       </div>
 

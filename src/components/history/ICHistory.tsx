@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Search, Calendar, Filter, ChevronDown, FileText, Users, Clock, CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Search, Calendar, Filter, FileText, Users, Clock, CheckCircle, XCircle, AlertCircle, Loader2, TrendingUp, DollarSign, ArrowRight, BarChart3, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface ICMeeting {
   id: string;
@@ -28,6 +29,7 @@ const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; bg
 };
 
 export function ICHistory() {
+  const navigate = useNavigate();
   const [meetings, setMeetings] = useState<ICMeeting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,16 +80,62 @@ export function ICHistory() {
     );
   }
 
+  // Summary stats
+  const totalMeetings = meetings.length;
+  const approvedCount = meetings.filter(m => m.outcome === "approved").length;
+  const rejectedCount = meetings.filter(m => m.outcome === "rejected").length;
+  const approvalRate = totalMeetings > 0 ? Math.round((approvedCount / Math.max(approvedCount + rejectedCount, 1)) * 100) : 0;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="opacity-0 animate-fade-in">
-        <h2 className="text-2xl font-semibold">IC History</h2>
-        <p className="text-muted-foreground mt-1">Browse and search past investment committee meetings</p>
+        <h2 className="text-xl font-semibold tracking-tight">IC Meeting Archive</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Historical record of investment committee proceedings and outcomes</p>
+      </div>
+
+      {/* Summary KPIs */}
+      <div className="grid grid-cols-4 gap-3 opacity-0 animate-fade-in" style={{ animationDelay: "50ms" }}>
+        <div className="metric-card-compact flex items-center gap-3">
+          <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
+            <BarChart3 className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold tabular-nums">{totalMeetings}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Meetings</p>
+          </div>
+        </div>
+        <div className="metric-card-compact flex items-center gap-3">
+          <div className="w-8 h-8 rounded-md bg-emerald-500/10 flex items-center justify-center">
+            <CheckCircle className="w-4 h-4 text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{approvedCount}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Approved</p>
+          </div>
+        </div>
+        <div className="metric-card-compact flex items-center gap-3">
+          <div className="w-8 h-8 rounded-md bg-red-500/10 flex items-center justify-center">
+            <XCircle className="w-4 h-4 text-red-500" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">{rejectedCount}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Rejected</p>
+          </div>
+        </div>
+        <div className="metric-card-compact flex items-center gap-3">
+          <div className="w-8 h-8 rounded-md bg-blue-500/10 flex items-center justify-center">
+            <TrendingUp className="w-4 h-4 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold tabular-nums">{approvalRate}%</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Approval Rate</p>
+          </div>
+        </div>
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
+      <div className="flex flex-col sm:flex-row gap-2.5 opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -95,12 +143,12 @@ export function ICHistory() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search deals, sectors..."
-            className="w-full bg-secondary/50 rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="w-full bg-card border border-border rounded-lg pl-9 pr-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]">
-            <Filter className="w-4 h-4 mr-2" />
+          <SelectTrigger className="w-[150px]">
+            <Filter className="w-3.5 h-3.5 mr-1.5" />
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -112,9 +160,8 @@ export function ICHistory() {
           </SelectContent>
         </Select>
         <Select value={sectorFilter} onValueChange={setSectorFilter}>
-          <SelectTrigger className="w-[180px]">
-            <Calendar className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Sector" />
+          <SelectTrigger className="w-[170px]">
+            <SelectValue placeholder="All Sectors" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Sectors</SelectItem>
@@ -127,20 +174,19 @@ export function ICHistory() {
         </Select>
       </div>
 
-      {/* Results count */}
-      <p className="text-sm text-muted-foreground">
-        {filteredMeetings.length} meeting{filteredMeetings.length !== 1 ? "s" : ""} found
+      <p className="text-xs text-muted-foreground">
+        {filteredMeetings.length} of {totalMeetings} meetings
       </p>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Meetings List */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="lg:col-span-2 space-y-2">
           {filteredMeetings.length === 0 ? (
             <div className="glass rounded-xl p-12 text-center">
-              <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No IC meetings found</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-40" />
+              <p className="text-sm text-muted-foreground">No IC meetings found</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 {meetings.length === 0
                   ? "IC meetings will appear here once they are recorded."
                   : "Try adjusting your search or filters."}
@@ -158,50 +204,55 @@ export function ICHistory() {
                   key={meeting.id}
                   onClick={() => setSelectedMeeting(meeting)}
                   className={cn(
-                    "glass rounded-xl p-4 cursor-pointer transition-all duration-200 opacity-0 animate-fade-in",
+                    "glass rounded-lg p-4 cursor-pointer transition-all duration-150 opacity-0 animate-fade-in group",
                     selectedMeeting?.id === meeting.id
-                      ? "border-primary/50 bg-primary/5"
-                      : "glass-hover"
+                      ? "border-primary/40 shadow-md"
+                      : "hover:shadow-md hover:border-primary/15"
                   )}
-                  style={{ animationDelay: `${150 + index * 50}ms` }}
+                  style={{ animationDelay: `${100 + index * 30}ms` }}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h4 className="font-medium">{meeting.deal_name}</h4>
-                      <p className="text-sm text-muted-foreground capitalize">
-                        {(meeting.sector || "Unknown").replace(/_/g, " ")}
-                      </p>
+                  <div className="flex items-start justify-between mb-2.5">
+                    <div className="flex items-start gap-3">
+                      <div className={cn("w-8 h-8 rounded-md flex items-center justify-center shrink-0 mt-0.5", config.bg)}>
+                        <StatusIcon className={cn("w-4 h-4", config.color)} />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm">{meeting.deal_name}</h4>
+                        <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                          {(meeting.sector || "Unknown").replace(/_/g, " ")}
+                          {meeting.deal_size && <span className="ml-2 font-medium text-foreground">{meeting.deal_size}</span>}
+                        </p>
+                      </div>
                     </div>
-                    <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", config.bg, config.color)}>
-                      <StatusIcon className="w-3.5 h-3.5" />
-                      {config.label}
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={cn("text-[10px] border font-medium", config.bg, config.color)}>
+                        {config.label}
+                      </Badge>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-colors" />
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-4 text-[11px] text-muted-foreground ml-11">
                     <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {new Date(meeting.meeting_date).toLocaleDateString()}
+                      <Calendar className="w-3 h-3" />
+                      {new Date(meeting.meeting_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
                     {attendeeCount > 0 && (
                       <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" />
-                        {attendeeCount} attendees
+                        <Users className="w-3 h-3" />
+                        {attendeeCount}
                       </span>
                     )}
                     {questionCount > 0 && (
                       <span className="flex items-center gap-1">
-                        <FileText className="w-3.5 h-3.5" />
+                        <FileText className="w-3 h-3" />
                         {questionCount} questions
                       </span>
                     )}
-                    {meeting.deal_size && (
-                      <span className="font-medium text-foreground">{meeting.deal_size}</span>
-                    )}
                   </div>
                   {Array.isArray(meeting.key_concerns) && meeting.key_concerns.length > 0 && (
-                    <div className="flex items-center gap-2 mt-3">
+                    <div className="flex items-center gap-1.5 mt-2.5 ml-11">
                       {(meeting.key_concerns as string[]).slice(0, 3).map((concern, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">
+                        <Badge key={i} variant="outline" className="text-[10px] font-normal">
                           {typeof concern === "string" ? concern : (concern as any).concern || ""}
                         </Badge>
                       ))}
@@ -214,62 +265,55 @@ export function ICHistory() {
         </div>
 
         {/* Details Panel */}
-        <div className="glass rounded-xl p-5 h-fit sticky top-6 opacity-0 animate-fade-in" style={{ animationDelay: "200ms" }}>
+        <div className="glass rounded-xl p-5 h-fit sticky top-6 opacity-0 animate-fade-in" style={{ animationDelay: "150ms" }}>
           {selectedMeeting ? (
             <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-lg">{selectedMeeting.deal_name}</h3>
-                <p className="text-sm text-muted-foreground capitalize">
-                  {(selectedMeeting.sector || "Unknown").replace(/_/g, " ")}
-                </p>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold">{selectedMeeting.deal_name}</h3>
+                  <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                    {(selectedMeeting.sector || "Unknown").replace(/_/g, " ")}
+                  </p>
+                </div>
+                <Badge variant="outline" className={cn("text-xs border font-medium", getStatusConfig(selectedMeeting.outcome).bg, getStatusConfig(selectedMeeting.outcome).color)}>
+                  {getStatusConfig(selectedMeeting.outcome).label}
+                </Badge>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Date</span>
-                  <span className="font-medium">{new Date(selectedMeeting.meeting_date).toLocaleDateString()}</span>
+              <div className="space-y-2.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground text-xs">Date</span>
+                  <span className="font-medium text-xs">{new Date(selectedMeeting.meeting_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
                 </div>
                 {selectedMeeting.deal_size && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Deal Size</span>
-                    <span className="font-medium">{selectedMeeting.deal_size}</span>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground text-xs">Deal Size</span>
+                    <span className="font-medium text-xs tabular-nums">{selectedMeeting.deal_size}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Outcome</span>
-                  <Badge className={cn("text-xs border", getStatusConfig(selectedMeeting.outcome).bg, getStatusConfig(selectedMeeting.outcome).color)}>
-                    {getStatusConfig(selectedMeeting.outcome).label}
-                  </Badge>
-                </div>
                 {Array.isArray(selectedMeeting.attendees) && selectedMeeting.attendees.length > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Attendees</span>
-                    <span className="font-medium">{selectedMeeting.attendees.length}</span>
-                  </div>
-                )}
-                {Array.isArray(selectedMeeting.questions_asked) && selectedMeeting.questions_asked.length > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Questions Asked</span>
-                    <span className="font-medium">{selectedMeeting.questions_asked.length}</span>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground text-xs">Attendees</span>
+                    <span className="font-medium text-xs">{selectedMeeting.attendees.length}</span>
                   </div>
                 )}
               </div>
 
               {selectedMeeting.summary && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-sm text-muted-foreground mb-1">Summary</p>
-                  <p className="text-sm whitespace-pre-wrap">{selectedMeeting.summary}</p>
+                <div className="pt-3 border-t border-border">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Summary</p>
+                  <p className="text-xs leading-relaxed whitespace-pre-wrap">{selectedMeeting.summary}</p>
                 </div>
               )}
 
               {Array.isArray(selectedMeeting.questions_asked) && selectedMeeting.questions_asked.length > 0 && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-sm text-muted-foreground mb-2">Questions Asked</p>
+                <div className="pt-3 border-t border-border">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Questions Asked</p>
                   <ul className="space-y-1">
                     {(selectedMeeting.questions_asked as string[]).map((q, i) => (
-                      <li key={i} className="text-sm flex items-start gap-2">
-                        <span className="text-primary shrink-0">•</span>
-                        <span>{typeof q === "string" ? q : JSON.stringify(q)}</span>
+                      <li key={i} className="text-xs flex items-start gap-1.5">
+                        <span className="text-primary shrink-0 mt-0.5">&#8226;</span>
+                        <span className="leading-relaxed">{typeof q === "string" ? q : JSON.stringify(q)}</span>
                       </li>
                     ))}
                   </ul>
@@ -277,24 +321,34 @@ export function ICHistory() {
               )}
 
               {Array.isArray(selectedMeeting.key_concerns) && selectedMeeting.key_concerns.length > 0 && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-sm text-muted-foreground mb-2">Key Concerns</p>
-                  <div className="flex flex-wrap gap-2">
+                <div className="pt-3 border-t border-border">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Key Concerns</p>
+                  <div className="flex flex-wrap gap-1.5">
                     {(selectedMeeting.key_concerns as any[]).map((concern, i) => (
-                      <Badge key={i} variant="outline">
+                      <Badge key={i} variant="outline" className="text-[10px] font-normal">
                         {typeof concern === "string" ? concern : concern.concern || ""}
                       </Badge>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Action buttons */}
+              <div className="pt-3 border-t border-border flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 text-xs h-8" onClick={() => navigate("/chat")}>
+                  <MessageSquare className="w-3 h-3 mr-1" /> Ask AI
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 text-xs h-8" onClick={() => navigate("/generator")}>
+                  <FileText className="w-3 h-3 mr-1" /> View Memo
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="text-center py-8">
-              <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-3">
-                <FileText className="w-6 h-6 text-muted-foreground" />
+              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center mx-auto mb-3">
+                <FileText className="w-5 h-5 text-muted-foreground/50" />
               </div>
-              <p className="text-sm text-muted-foreground">Select a meeting to view details</p>
+              <p className="text-xs text-muted-foreground">Select a meeting to view details</p>
             </div>
           )}
         </div>
