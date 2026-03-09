@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, User, Loader2, ThumbsUp, ThumbsDown, Search, Target, ChevronDown, FileText, ExternalLink, BookOpen, Brain, AlertTriangle, TrendingUp } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Send, Sparkles, User, Loader2, ThumbsUp, ThumbsDown, Search, Target, ChevronDown, FileText, ExternalLink, BookOpen, Brain, AlertTriangle, TrendingUp, Bot, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useChat, ChatSource } from "@/hooks/useChat";
 import { SourceBadge } from "./SourceBadge";
@@ -86,6 +87,189 @@ const documentRefs: Record<string, DocumentRef[]> = {
       keyMetrics: [{ label: "TAM", value: "$42B" }, { label: "SAM", value: "$8.5B" }, { label: "Penetration", value: "0.8%" }] },
   ],
 };
+
+// ─── AI Model Options ───────────────────────────────────────────
+interface AIModel {
+  id: string;
+  label: string;
+  provider: string;
+  badge: string;
+  badgeColor: string;
+}
+
+const aiModels: AIModel[] = [
+  { id: "claude-opus-4-6", label: "Claude Opus 4.6", provider: "Anthropic", badge: "Recommended", badgeColor: "border-amber-500/30 text-amber-400" },
+  { id: "chatgpt-5.4", label: "ChatGPT 5.4", provider: "OpenAI", badge: "Beta", badgeColor: "border-emerald-500/30 text-emerald-400" },
+];
+
+// ─── Markdown → JSX Renderer ────────────────────────────────────
+
+function formatInlineText(text: string, docRefs: DocumentRef[], onRefClick: (ref: DocumentRef) => void): React.ReactNode[] {
+  // First, identify inline document references — match project names
+  const projectPatterns: { pattern: RegExp; key: string }[] = [
+    { pattern: /Project\s+Atlas/gi, key: "atlas" },
+    { pattern: /Project\s+Beacon/gi, key: "beacon" },
+    { pattern: /Project\s+Citadel/gi, key: "citadel" },
+    { pattern: /Project\s+Delta/gi, key: "delta" },
+    { pattern: /Project\s+Echo/gi, key: "echo" },
+    { pattern: /Project\s+Granite/gi, key: "granite" },
+    { pattern: /MedDevice\s+Holdings/gi, key: "atlas" },
+    { pattern: /CloudScale\s+Systems/gi, key: "beacon" },
+    { pattern: /Premier\s+Waste/gi, key: "citadel" },
+    { pattern: /NexGen\s+Insurance/gi, key: "delta" },
+    { pattern: /TalentBridge/gi, key: "echo" },
+    { pattern: /Apex\s+Dental/gi, key: "granite" },
+  ];
+
+  // Build a combined regex for inline bold/italic + doc references
+  // Process bold (**text**), italic (*text*), and doc references
+  const parts: React.ReactNode[] = [];
+
+  // Step 1: Process markdown formatting
+  const boldItalicRegex = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*/g;
+  let lastIndex = 0;
+  const segments: { start: number; end: number; node: React.ReactNode }[] = [];
+
+  let match;
+  while ((match = boldItalicRegex.exec(text)) !== null) {
+    if (match[1]) {
+      segments.push({ start: match.index, end: match.index + match[0].length, node: <strong key={`bi-${match.index}`}><em>{match[1]}</em></strong> });
+    } else if (match[2]) {
+      segments.push({ start: match.index, end: match.index + match[0].length, node: <strong key={`b-${match.index}`}>{match[2]}</strong> });
+    } else if (match[3]) {
+      segments.push({ start: match.index, end: match.index + match[0].length, node: <em key={`i-${match.index}`}>{match[3]}</em> });
+    }
+  }
+
+  // Step 2: Build final output, injecting doc links in plain text segments
+  const injectDocLinks = (plainText: string, startKey: number): React.ReactNode[] => {
+    const result: React.ReactNode[] = [];
+    let remaining = plainText;
+    let keyIdx = startKey;
+
+    for (const { pattern, key } of projectPatterns) {
+      const tempParts: React.ReactNode[] = [];
+      const regex = new RegExp(pattern.source, pattern.flags);
+      let pMatch;
+      let pLast = 0;
+      const text = typeof remaining === "string" ? remaining : "";
+
+      while ((pMatch = regex.exec(text)) !== null) {
+        if (pMatch.index > pLast) {
+          tempParts.push(text.slice(pLast, pMatch.index));
+        }
+        const ref = docRefs.find(r => {
+          const rKey = Object.entries(documentRefs).find(([, refs]) => refs.includes(r))?.[0];
+          return rKey === key;
+        }) || (documentRefs[key] && documentRefs[key][0]);
+
+        if (ref) {
+          tempParts.push(
+            <button
+              key={`dlink-${keyIdx++}`}
+              onClick={() => onRefClick(ref)}
+              className="inline text-primary hover:text-primary/80 underline underline-offset-2 decoration-primary/40 hover:decoration-primary/80 transition-colors font-medium"
+            >
+              {pMatch[0]}
+            </button>
+          );
+        } else {
+          tempParts.push(pMatch[0]);
+        }
+        pLast = pMatch.index + pMatch[0].length;
+      }
+      if (pLast < text.length) {
+        tempParts.push(text.slice(pLast));
+      }
+      if (tempParts.length > 0) {
+        remaining = tempParts as any;
+      }
+    }
+
+    if (Array.isArray(remaining)) {
+      return remaining as React.ReactNode[];
+    }
+    return [remaining];
+  };
+
+  let cursor = 0;
+  for (const seg of segments) {
+    if (seg.start > cursor) {
+      parts.push(...injectDocLinks(text.slice(cursor, seg.start), cursor));
+    }
+    parts.push(seg.node);
+    cursor = seg.end;
+  }
+  if (cursor < text.length) {
+    parts.push(...injectDocLinks(text.slice(cursor), cursor));
+  }
+
+  return parts;
+}
+
+function FormattedMessage({ content, docRefs, onRefClick }: { content: string; docRefs: DocumentRef[]; onRefClick: (ref: DocumentRef) => void }) {
+  const elements = useMemo(() => {
+    const lines = content.split("\n");
+    const result: React.ReactNode[] = [];
+    let listItems: React.ReactNode[] = [];
+    let listType: "ul" | "ol" | null = null;
+    let keyIdx = 0;
+
+    const flushList = () => {
+      if (listItems.length > 0) {
+        if (listType === "ol") {
+          result.push(<ol key={`ol-${keyIdx++}`} className="list-decimal list-inside space-y-1 my-1">{listItems}</ol>);
+        } else {
+          result.push(<ul key={`ul-${keyIdx++}`} className="list-disc list-inside space-y-1 my-1">{listItems}</ul>);
+        }
+        listItems = [];
+        listType = null;
+      }
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      // Headers
+      if (trimmed.startsWith("### ")) {
+        flushList();
+        result.push(<p key={`h3-${i}`} className="font-semibold text-sm mt-2 mb-1">{formatInlineText(trimmed.slice(4), docRefs, onRefClick)}</p>);
+      } else if (trimmed.startsWith("## ")) {
+        flushList();
+        result.push(<p key={`h2-${i}`} className="font-bold text-sm mt-3 mb-1">{formatInlineText(trimmed.slice(3), docRefs, onRefClick)}</p>);
+      } else if (trimmed.startsWith("# ")) {
+        flushList();
+        result.push(<p key={`h1-${i}`} className="font-bold text-base mt-3 mb-1">{formatInlineText(trimmed.slice(2), docRefs, onRefClick)}</p>);
+      }
+      // Bullet lists
+      else if (/^[-•]\s/.test(trimmed)) {
+        if (listType !== "ul") { flushList(); listType = "ul"; }
+        listItems.push(<li key={`li-${i}`}>{formatInlineText(trimmed.slice(2), docRefs, onRefClick)}</li>);
+      }
+      // Numbered lists
+      else if (/^\d+[.)]\s/.test(trimmed)) {
+        if (listType !== "ol") { flushList(); listType = "ol"; }
+        const textStart = trimmed.indexOf(" ") + 1;
+        listItems.push(<li key={`li-${i}`}>{formatInlineText(trimmed.slice(textStart), docRefs, onRefClick)}</li>);
+      }
+      // Empty line
+      else if (trimmed === "") {
+        flushList();
+        result.push(<div key={`br-${i}`} className="h-2" />);
+      }
+      // Regular paragraph
+      else {
+        flushList();
+        result.push(<p key={`p-${i}`}>{formatInlineText(trimmed, docRefs, onRefClick)}</p>);
+      }
+    }
+    flushList();
+    return result;
+  }, [content, docRefs, onRefClick]);
+
+  return <div className="text-sm space-y-1">{elements}</div>;
+}
 
 const promptCategories: PromptCategory[] = [
   {
@@ -202,6 +386,7 @@ export function AIChat() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [docDrillDown, setDocDrillDown] = useState<DocumentRef | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>("claude-opus-4-6");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -216,7 +401,7 @@ export function AIChat() {
     if (!input.trim() || isLoading) return;
     const message = input;
     setInput("");
-    await sendMessage(message);
+    await sendMessage(message, { model: selectedModel });
   };
 
   const handleSuggestionClick = (question: string) => {
@@ -310,7 +495,15 @@ export function AIChat() {
                   "max-w-[80%] rounded-xl p-4",
                   message.role === "assistant" ? "bg-secondary/50" : "bg-primary/10 border border-primary/20"
                 )}>
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  {message.role === "assistant" ? (
+                    <FormattedMessage
+                      content={message.content}
+                      docRefs={findDocumentRefs(message.content)}
+                      onRefClick={(ref) => setDocDrillDown(ref)}
+                    />
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  )}
                   {/* Document References for AI responses */}
                   {message.role === "assistant" && message.content && (() => {
                     const refs = findDocumentRefs(message.content);
@@ -319,7 +512,7 @@ export function AIChat() {
                       <div className="mt-3 pt-3 border-t border-border/50">
                         <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                           <BookOpen className="w-3 h-3" />
-                          Related Documents:
+                          Referenced Documents:
                         </p>
                         <div className="space-y-1.5">
                           {refs.map((ref, idx) => {
@@ -436,6 +629,30 @@ export function AIChat() {
 
           {/* Input */}
           <div className="p-4 border-t border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Model:</span>
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <SelectTrigger className="h-7 w-auto min-w-[180px] text-xs bg-secondary/50 border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {aiModels.map((model) => (
+                    <SelectItem key={model.id} value={model.id} className="text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{model.label}</span>
+                        <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0", model.badgeColor)}>
+                          {model.badge}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                {aiModels.find(m => m.id === selectedModel)?.provider}
+              </span>
+            </div>
             <div className="flex gap-2">
               <input
                 type="text"

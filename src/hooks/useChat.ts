@@ -67,7 +67,7 @@ export function useChat() {
       });
   };
 
-  const sendMessage = useCallback(async (input: string, context?: { dealName?: string; sector?: string }) => {
+  const sendMessage = useCallback(async (input: string, context?: { dealName?: string; sector?: string; model?: string }) => {
     if (!input.trim() || isLoading) return;
 
     // Create session if needed
@@ -104,7 +104,8 @@ export function useChat() {
         body: JSON.stringify({
           messages: [{ role: "user", content: input }],
           sessionId: currentSessionId,
-          context,
+          context: context ? { dealName: context.dealName, sector: context.sector } : undefined,
+          model: context?.model,
         }),
       });
 
