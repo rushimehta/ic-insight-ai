@@ -2,7 +2,8 @@ import { useEffect, useState, Fragment } from "react";
 import {
   FileText, MessageSquare, Clock, DollarSign, Target, ArrowUpRight,
   BarChart3, Activity, ChevronRight, ChevronDown,
-  Layers, Zap, Globe, Sparkles, Calendar, ArrowRight
+  Layers, Zap, Globe, Sparkles, Calendar, ArrowRight, X,
+  AlertTriangle, TrendingUp, Brain, Building2, Users, Shield
 } from "lucide-react";
 import { InsightCard } from "./InsightCard";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
@@ -10,12 +11,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import {
   ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
   Tooltip, XAxis, YAxis, CartesianGrid
 } from "recharts";
+
+// ─── Drill-Down State ───────────────────────────────────────────────
+
+interface DrillDown {
+  open: boolean;
+  title: string;
+  subtitle?: string;
+  content: React.ReactNode;
+}
 
 // ─── Interfaces ─────────────────────────────────────────────────────
 
@@ -302,6 +314,13 @@ export function RoleDashboard() {
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [expandedDealId, setExpandedDealId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [drillDown, setDrillDown] = useState<DrillDown>({ open: false, title: "", content: null });
+
+  const closeDrillDown = () => setDrillDown(prev => ({ ...prev, open: false }));
+
+  const openDrillDown = (title: string, subtitle: string, content: React.ReactNode) => {
+    setDrillDown({ open: true, title, subtitle, content });
+  };
 
   useEffect(() => {
     if (!permissionsLoading) fetchStats();
@@ -367,11 +386,50 @@ export function RoleDashboard() {
         {[
           {
             label: "Active Deals", value: activeDeals.length.toString(), sub: "+3 this quarter",
-            subColor: "text-emerald-500", icon: ArrowUpRight, nav: "/pipeline",
+            subColor: "text-emerald-500", icon: ArrowUpRight,
+            drillDown: () => openDrillDown("Active Deals", `${activeDeals.length} deals currently in pipeline`, (
+              <div className="space-y-2">
+                {activeDeals.map(d => (
+                  <div key={d.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/50">
+                    <div>
+                      <p className="font-medium text-sm">{d.name}</p>
+                      <p className="text-xs text-muted-foreground">{d.company} &middot; {d.sector}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold tabular-nums">{d.ev}</p>
+                      <Badge variant="outline" className={cn("text-[10px]", statusConfig[d.status].className)}>{statusConfig[d.status].label}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )),
           },
           {
             label: "Pipeline EV", value: `$${(totalPipelineEV / 1000).toFixed(1)}B`, sub: "Total enterprise value",
-            nav: "/pipeline",
+            drillDown: () => openDrillDown("Pipeline Enterprise Value", "EV breakdown by sector and stage", (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">By Sector</h4>
+                  {sectorMetrics.map(s => {
+                    const sectorDeals = activeDeals.filter(d => d.sector === s.sector);
+                    const sectorEV = sectorDeals.reduce((sum, d) => sum + d.evNum, 0);
+                    return (
+                      <div key={s.sector} className="flex items-center justify-between p-2.5 rounded-lg bg-secondary/30">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ background: s.color }} />
+                          <span className="text-sm font-medium">{s.sector}</span>
+                          <span className="text-xs text-muted-foreground">({sectorDeals.length} deals)</span>
+                        </div>
+                        <span className="text-sm font-semibold tabular-nums">${sectorEV}M</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <p className="text-xs"><span className="font-medium">Total Pipeline:</span> ${(totalPipelineEV / 1000).toFixed(2)}B across {activeDeals.length} deals</p>
+                </div>
+              </div>
+            )),
           },
           {
             label: "Avg Target IRR", value: `${avgIRR}%`, sub: "+1.2pp vs Fund VI",
@@ -386,21 +444,78 @@ export function RoleDashboard() {
           },
           {
             label: "IC Meetings YTD", value: (stats.meetingsCount || 14).toString(),
-            sub: `${stats.approvalRate || 67}% approval rate`, nav: "/history",
+            sub: `${stats.approvalRate || 67}% approval rate`,
+            drillDown: () => openDrillDown("IC Meetings Year-to-Date", `${stats.meetingsCount || 14} meetings with ${stats.approvalRate || 67}% approval rate`, (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Total Meetings", value: (stats.meetingsCount || 14).toString() },
+                    { label: "Approval Rate", value: `${stats.approvalRate || 67}%` },
+                    { label: "Avg per Month", value: Math.round((stats.meetingsCount || 14) / 3).toString() },
+                  ].map(m => (
+                    <div key={m.label} className="p-3 rounded-lg bg-secondary/50 text-center">
+                      <p className="text-xs text-muted-foreground">{m.label}</p>
+                      <p className="text-xl font-bold tabular-nums">{m.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Upcoming IC Schedule</h4>
+                  {upcomingICs.map((ic, i) => (
+                    <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-secondary/30">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("w-2 h-2 rounded-full", priorityDot[ic.priority])} />
+                        <span className="text-sm font-medium">{ic.deal}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <Badge variant="secondary" className="text-[10px]">{ic.stage}</Badge>
+                        <span className="text-muted-foreground tabular-nums">{ic.date}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )),
           },
           {
             label: "IC Decks Filed", value: (stats.documentsCount || 47).toString(),
-            sub: "Searchable archive", nav: "/repository",
+            sub: "Searchable archive",
+            drillDown: () => openDrillDown("IC Decks & Documents", `${stats.documentsCount || 47} documents indexed`, (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Total Documents", value: (stats.documentsCount || 47).toString() },
+                    { label: "IC Drafts", value: (stats.draftsCount || 8).toString() },
+                    { label: "Pending Review", value: (stats.pendingReviewCount || 3).toString() },
+                    { label: "Sectors Covered", value: "5" },
+                  ].map(m => (
+                    <div key={m.label} className="p-3 rounded-lg bg-secondary/50 text-center">
+                      <p className="text-xs text-muted-foreground">{m.label}</p>
+                      <p className="text-xl font-bold tabular-nums">{m.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Recent Documents by Deal</h4>
+                  {["Project Atlas — IC2 Investment Memo", "Project Delta — IC Final Memo", "Project Beacon — IC1 Teaser", "Project Citadel — IC3 DD Summary", "Project Echo — Post-IC Approval"].map(doc => (
+                    <div key={doc} className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/30">
+                      <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="text-sm">{doc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )),
           },
         ].map((kpi, i) => {
           const SubIcon = kpi.icon;
           return (
             <div
               key={i}
-              onClick={kpi.nav ? () => navigate(kpi.nav!) : undefined}
+              onClick={kpi.drillDown || undefined}
               className={cn(
                 "metric-card text-center group",
-                kpi.nav && "drill-down"
+                kpi.drillDown && "drill-down"
               )}
             >
               <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5">
@@ -704,26 +819,77 @@ export function RoleDashboard() {
               <Badge variant="secondary" className="text-[10px] font-medium">{upcomingICs.length} upcoming</Badge>
             </div>
             <div className="divide-y divide-border/40">
-              {upcomingICs.map((ic, i) => (
-                <div
-                  key={i}
-                  className="px-4 py-2.5 hover:bg-secondary/30 transition-colors cursor-pointer flex items-start gap-2.5"
-                  onClick={() => navigate("/history")}
-                >
-                  <span className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", priorityDot[ic.priority])} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm truncate">{ic.deal}</span>
-                      <span className="text-[11px] text-muted-foreground tabular-nums ml-2 shrink-0">{ic.date}</span>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                      <span>{ic.stage}</span>
-                      <span className="opacity-40">&middot;</span>
-                      <span>{ic.type}</span>
+              {upcomingICs.map((ic, i) => {
+                const deal = sampleDeals.find(d => d.name === ic.deal);
+                return (
+                  <div
+                    key={i}
+                    className="px-4 py-2.5 hover:bg-secondary/30 transition-colors cursor-pointer flex items-start gap-2.5"
+                    onClick={() => openDrillDown(
+                      `${ic.deal} — ${ic.stage}`,
+                      `${ic.type} scheduled for ${ic.date}`,
+                      (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { label: "IC Stage", value: ic.stage },
+                              { label: "Meeting Type", value: ic.type },
+                              { label: "Date", value: ic.date },
+                              { label: "Lead Partner", value: ic.partner },
+                              ...(deal ? [
+                                { label: "Enterprise Value", value: deal.ev },
+                                { label: "EV/EBITDA", value: deal.evEbitda },
+                                { label: "Target IRR", value: `${deal.irr}%` },
+                                { label: "Target MOIC", value: `${deal.moic}x` },
+                                { label: "Sector", value: deal.sector },
+                                { label: "Deal Type", value: deal.fundingRound },
+                                { label: "Equity Check", value: deal.equityCheck },
+                                { label: "Leverage", value: deal.leverage },
+                              ] : []),
+                            ].map(m => (
+                              <div key={m.label} className="p-2.5 rounded-lg bg-secondary/50">
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</p>
+                                <p className="text-sm font-semibold tabular-nums">{m.value}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {deal && (
+                            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                              <div className="flex items-start gap-2">
+                                <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="text-xs font-medium">AI Meeting Prep</p>
+                                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                                    {deal.irr >= 25
+                                      ? `Strong return profile at ${deal.irr}% IRR. Focus IC discussion on execution risk and downside protection.`
+                                      : deal.irr >= 20
+                                      ? `Moderate return profile at ${deal.irr}% IRR. IC will likely probe valuation assumptions and margin expansion pathway.`
+                                      : `Below-threshold IRR at ${deal.irr}%. Prepare robust defense of entry multiple and value creation plan.`
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    )}
+                  >
+                    <span className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", priorityDot[ic.priority])} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm truncate">{ic.deal}</span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums ml-2 shrink-0">{ic.date}</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                        <span>{ic.stage}</span>
+                        <span className="opacity-40">&middot;</span>
+                        <span>{ic.type}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -845,42 +1011,190 @@ export function RoleDashboard() {
           </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="cursor-pointer" onClick={() => navigate("/chat")}>
-            <InsightCard
-              type="warning"
-              title="Valuation Alert: Project Delta"
-              description="EV/EBITDA of 14.1x is 18% above sector median for insurance platforms. Historical IC approval at this multiple is 42%."
-              source="AI Valuation Analysis"
-              delay={400}
-            />
-          </div>
-          <div className="cursor-pointer" onClick={() => navigate("/analytics")}>
-            <InsightCard
-              type="trend"
-              title="Healthcare Multiples Expanding"
-              description="Healthcare services EV/EBITDA expanded from 11.2x to 12.6x over 12 months. Project Atlas positioned favorably at 12.5x entry."
-              source="Market Intelligence"
-              delay={450}
-            />
-          </div>
-          <div className="cursor-pointer" onClick={() => navigate("/questions")}>
-            <InsightCard
-              type="insight"
-              title="IC Pattern: Key-Person Risk"
-              description="Last 8 rejected deals had management concentration as a top-3 concern. Project Beacon should address key-person dependencies before IC-1."
-              source="IC Pattern Analysis"
-              delay={500}
-            />
-          </div>
-          <div className="cursor-pointer" onClick={() => navigate("/pipeline")}>
-            <InsightCard
-              type="warning"
-              title="Due Diligence Bottleneck"
-              description="Project Beacon (15 days) and Project Keystone (11 days) in DD without QoE reports. Avg completion at peer funds: 10 days."
-              source="Process Monitoring"
-              delay={550}
-            />
-          </div>
+          <InsightCard
+            type="warning"
+            title="Valuation Alert: Project Delta"
+            description="EV/EBITDA of 14.1x is 18% above sector median for insurance platforms. Historical IC approval at this multiple is 42%."
+            source="AI Valuation Analysis"
+            delay={400}
+            onClick={() => openDrillDown("Valuation Alert: Project Delta", "AI Valuation Analysis", (
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-sm">EV/EBITDA of <span className="font-bold">14.1x</span> is <span className="font-bold text-amber-500">18% above</span> sector median for insurance platforms.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Entry Multiple", value: "14.1x EV/EBITDA" },
+                    { label: "Sector Median", value: "12.0x EV/EBITDA" },
+                    { label: "Premium", value: "+18% above median" },
+                    { label: "Historical Approval", value: "42% at this level" },
+                    { label: "Enterprise Value", value: "$890M" },
+                    { label: "EBITDA", value: "$63M" },
+                  ].map(m => (
+                    <div key={m.label} className="p-2.5 rounded-lg bg-secondary/50">
+                      <p className="text-[10px] text-muted-foreground uppercase">{m.label}</p>
+                      <p className="text-sm font-semibold">{m.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2">Comparable Deals at Similar Multiples</h4>
+                  <div className="space-y-1.5">
+                    {[
+                      { deal: "Project Granite", multiple: "15.3x", outcome: "Passed", badge: "badge-negative" },
+                      { deal: "FinServ Platform III (2024)", multiple: "13.8x", outcome: "Approved", badge: "badge-positive" },
+                      { deal: "InsureTech Co (2023)", multiple: "14.5x", outcome: "Passed", badge: "badge-negative" },
+                    ].map(c => (
+                      <div key={c.deal} className="flex items-center justify-between p-2 rounded bg-secondary/30 text-sm">
+                        <span>{c.deal} — {c.multiple}</span>
+                        <Badge variant="outline" className={cn("text-[10px]", c.badge)}>{c.outcome}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <p className="text-xs"><span className="font-medium">AI Recommendation:</span> Request management team to present detailed margin expansion roadmap and downside protection analysis at IC Final to justify premium entry multiple.</p>
+                </div>
+              </div>
+            ))}
+          />
+          <InsightCard
+            type="trend"
+            title="Healthcare Multiples Expanding"
+            description="Healthcare services EV/EBITDA expanded from 11.2x to 12.6x over 12 months. Project Atlas positioned favorably at 12.5x entry."
+            source="Market Intelligence"
+            delay={450}
+            onClick={() => openDrillDown("Healthcare Multiples Expanding", "Market Intelligence Analysis", (
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <div className="flex items-start gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <p className="text-sm">Healthcare services EV/EBITDA expanded from <span className="font-bold">11.2x</span> to <span className="font-bold text-emerald-500">12.6x</span> over 12 months (+12.5%).</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "12M Ago", value: "11.2x" },
+                    { label: "Current", value: "12.6x" },
+                    { label: "Expansion", value: "+12.5%" },
+                  ].map(m => (
+                    <div key={m.label} className="p-3 rounded-lg bg-secondary/50 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase">{m.label}</p>
+                      <p className="text-lg font-bold tabular-nums">{m.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2">Fund VII Healthcare Deals</h4>
+                  {sampleDeals.filter(d => d.sector === "Healthcare").map(d => (
+                    <div key={d.id} className="flex items-center justify-between p-2.5 rounded-lg bg-secondary/30 mb-1.5">
+                      <div>
+                        <span className="text-sm font-medium">{d.name}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{d.company}</span>
+                      </div>
+                      <div className="text-right text-xs">
+                        <span className="font-semibold tabular-nums">{d.evEbitda}</span>
+                        <Badge variant="outline" className={cn("text-[10px] ml-2", statusConfig[d.status].className)}>{statusConfig[d.status].label}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <p className="text-xs"><span className="font-medium">Positioning:</span> Project Atlas at 12.5x entry is at current market level. If multiples continue expanding, entry looks favorable. Monitor for interest rate impact on healthcare valuations.</p>
+                </div>
+              </div>
+            ))}
+          />
+          <InsightCard
+            type="insight"
+            title="IC Pattern: Key-Person Risk"
+            description="Last 8 rejected deals had management concentration as a top-3 concern. Project Beacon should address key-person dependencies before IC-1."
+            source="IC Pattern Analysis"
+            delay={500}
+            onClick={() => openDrillDown("IC Pattern: Key-Person Risk", "IC Pattern Analysis — Historical Rejection Drivers", (
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <div className="flex items-start gap-2">
+                    <Users className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                    <p className="text-sm"><span className="font-bold">8 of last 12 rejected deals</span> had management concentration flagged as a top-3 IC concern.</p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2">Top Rejection Reasons (Last 24 Months)</h4>
+                  {[
+                    { reason: "Key-person dependency / management concentration", count: 8, pct: 67 },
+                    { reason: "Valuation above comparable range", count: 6, pct: 50 },
+                    { reason: "Customer concentration (>25% single customer)", count: 5, pct: 42 },
+                    { reason: "Regulatory / compliance risk", count: 4, pct: 33 },
+                    { reason: "Unclear path to exit", count: 3, pct: 25 },
+                  ].map(r => (
+                    <div key={r.reason} className="mb-2">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-sm">{r.reason}</span>
+                        <span className="text-muted-foreground tabular-nums">{r.count}/12 ({r.pct}%)</span>
+                      </div>
+                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full bg-primary/60 rounded-full" style={{ width: `${r.pct}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <p className="text-xs"><span className="font-medium">Action Required:</span> Project Beacon (CloudScale Systems) should prepare a management depth analysis and succession plan for IC-1. Highlight VP/SVP bench strength and key-person insurance coverage.</p>
+                </div>
+              </div>
+            ))}
+          />
+          <InsightCard
+            type="warning"
+            title="Due Diligence Bottleneck"
+            description="Project Beacon (15 days) and Project Keystone (11 days) in DD without QoE reports. Avg completion at peer funds: 10 days."
+            source="Process Monitoring"
+            delay={550}
+            onClick={() => openDrillDown("Due Diligence Bottleneck", "Process Monitoring — DD Timeline Tracker", (
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-sm">2 deals exceeding average DD timeline. QoE reports pending from accounting advisors.</p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2">Deals Currently in Due Diligence</h4>
+                  {sampleDeals.filter(d => d.status === "in_diligence").map(d => (
+                    <div key={d.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 mb-2">
+                      <div>
+                        <p className="text-sm font-medium">{d.name}</p>
+                        <p className="text-xs text-muted-foreground">{d.company}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={cn("text-sm font-semibold tabular-nums", d.daysInStage > 14 ? "text-amber-500" : d.daysInStage > 10 ? "text-yellow-500" : "text-foreground")}>
+                          {d.daysInStage} days
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">{d.icStage}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Avg DD Duration", value: "10 days", sub: "Peer benchmark" },
+                    { label: "Longest Current", value: "15 days", sub: "Project Beacon" },
+                    { label: "At Risk", value: "2 deals", sub: "Exceeding avg" },
+                  ].map(m => (
+                    <div key={m.label} className="p-2.5 rounded-lg bg-secondary/50 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase">{m.label}</p>
+                      <p className="text-sm font-bold tabular-nums">{m.value}</p>
+                      <p className="text-[10px] text-muted-foreground">{m.sub}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          />
         </div>
       </div>
 
@@ -889,7 +1203,56 @@ export function RoleDashboard() {
         {/* Portfolio Returns */}
         <div
           className="glass rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group"
-          onClick={() => navigate("/analytics")}
+          onClick={() => openDrillDown("Fund VII Portfolio Returns", "Performance metrics & vintage breakdown", (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Net IRR", value: "18.4%", sub: "+2.1pp vs benchmark", positive: true },
+                  { label: "Gross MOIC", value: "2.3x", sub: "Fund VI: 2.1x", positive: true },
+                  { label: "DPI", value: "0.4x", sub: "Early vintage" },
+                  { label: "TVPI", value: "1.8x", sub: "Top quartile", positive: true },
+                ].map(m => (
+                  <div key={m.label} className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">{m.label}</p>
+                    <p className="text-xl font-bold tabular-nums">{m.value}</p>
+                    <p className={cn("text-[10px]", m.positive ? "text-emerald-500" : "text-muted-foreground")}>{m.sub}</p>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2">Performance by Vintage</h4>
+                {[
+                  { vintage: "2023", irr: "24.8%", moic: "2.6x", deals: 5, status: "Maturing" },
+                  { vintage: "2024", irr: "19.2%", moic: "1.6x", deals: 8, status: "Ramping" },
+                  { vintage: "2025", irr: "15.4%", moic: "1.2x", deals: 6, status: "Early" },
+                ].map(v => (
+                  <div key={v.vintage} className="flex items-center justify-between p-2.5 rounded-lg bg-secondary/30 mb-1.5">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold">{v.vintage}</span>
+                      <Badge variant="secondary" className="text-[10px]">{v.status}</Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs tabular-nums">
+                      <span>{v.deals} deals</span>
+                      <span className="font-semibold">{v.irr} IRR</span>
+                      <span>{v.moic} MOIC</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <p className="text-xs text-muted-foreground">vs Benchmark</p>
+                  <p className="text-sm font-semibold text-emerald-500">+2.1pp above median</p>
+                  <p className="text-[10px] text-muted-foreground">Cambridge Associates PE Index</p>
+                </div>
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <p className="text-xs text-muted-foreground">Quartile Ranking</p>
+                  <p className="text-sm font-semibold text-primary">Top Quartile</p>
+                  <p className="text-[10px] text-muted-foreground">Based on vintage year cohort</p>
+                </div>
+              </div>
+            </div>
+          ))}
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -917,7 +1280,37 @@ export function RoleDashboard() {
         {/* Recent IC Decisions */}
         <div
           className="glass rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group"
-          onClick={() => navigate("/history")}
+          onClick={() => {
+            const decisions = [
+              { deal: "Project Echo", company: "TalentBridge HR Tech", outcome: "Approved", date: "Mar 4", ev: "$215M", sector: "Technology", vote: "5-0 (Unanimous)", conditions: "Standard closing conditions; 100-day plan approved", badge: "badge-positive" },
+              { deal: "Project Citadel", company: "Premier Waste Solutions", outcome: "Approved", date: "Mar 2", ev: "$310M", sector: "Industrials", vote: "4-1", conditions: "Approved subject to fleet condition assessment completion", badge: "badge-positive" },
+              { deal: "Project Granite", company: "Apex Dental Partners", outcome: "Passed", date: "Feb 28", ev: "$520M", sector: "Healthcare", vote: "1-4", conditions: "Entry multiple too high; same-store growth concerns; de novo unit economics unproven", badge: "badge-negative" },
+              { deal: "Project Delta", company: "NexGen Insurance Group", outcome: "Deferred", date: "Feb 25", ev: "$890M", sector: "Financial Services", vote: "2-2-1", conditions: "Requested updated actuarial review and revised downside case before IC Final", badge: "badge-neutral" },
+              { deal: "Project Falcon", company: "GreenPark Logistics", outcome: "IC-1 Set", date: "Feb 22", ev: "$175M", sector: "Industrials", vote: "—", conditions: "Initial presentation scheduled; CIM distributed to IC members", badge: "badge-info" },
+            ];
+            openDrillDown("Recent IC Decisions", "Detailed outcomes with voting records", (
+              <div className="space-y-3">
+                {decisions.map(d => (
+                  <div key={d.deal} className="p-4 rounded-lg bg-secondary/30 border border-border/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <span className="font-semibold text-sm">{d.deal}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{d.company}</span>
+                      </div>
+                      <Badge variant="outline" className={cn("text-[10px] font-medium", d.badge)}>{d.outcome}</Badge>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-xs mb-2">
+                      <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{d.date}</span></div>
+                      <div><span className="text-muted-foreground">EV:</span> <span className="font-medium">{d.ev}</span></div>
+                      <div><span className="text-muted-foreground">Sector:</span> <span className="font-medium">{d.sector}</span></div>
+                      <div><span className="text-muted-foreground">Vote:</span> <span className="font-medium">{d.vote}</span></div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{d.conditions}</p>
+                  </div>
+                ))}
+              </div>
+            ));
+          }}
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -948,7 +1341,56 @@ export function RoleDashboard() {
         {/* AI Memory & Learning */}
         <div
           className="glass rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group"
-          onClick={() => navigate("/chat")}
+          onClick={() => openDrillDown("AI Memory & Learning", "Vector knowledge base statistics & recent learnings", (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Knowledge Chunks", value: "2,847", sub: "Vectorized embeddings", progress: 78 },
+                  { label: "Deal Patterns", value: "342", sub: "Cross-deal correlations", progress: 65 },
+                  { label: "IC Feedback Loops", value: "156", sub: "Question-outcome mappings", progress: 52 },
+                  { label: "Sector Insights", value: "89", sub: "Market intelligence entries", progress: 41 },
+                ].map(item => (
+                  <div key={item.label} className="p-3 rounded-lg bg-secondary/50">
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                    <p className="text-xl font-bold tabular-nums">{item.value}</p>
+                    <p className="text-[10px] text-muted-foreground mb-1.5">{item.sub}</p>
+                    <Progress value={item.progress} className="h-1.5" />
+                  </div>
+                ))}
+              </div>
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2">Recent Learning Events</h4>
+                {[
+                  { event: "Indexed Project Granite pass rationale", type: "IC Feedback", time: "2 hours ago", icon: "🔴" },
+                  { event: "Updated healthcare sector multiple ranges", type: "Sector Insight", time: "4 hours ago", icon: "🟢" },
+                  { event: "Learned from Project Echo approval conditions", type: "Deal Pattern", time: "1 day ago", icon: "🔵" },
+                  { event: "Processed Q4 2025 IC question-outcome correlation", type: "IC Feedback", time: "2 days ago", icon: "🟡" },
+                  { event: "Ingested 3 new IC memos into vector store", type: "Knowledge", time: "3 days ago", icon: "🟣" },
+                ].map(e => (
+                  <div key={e.event} className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/30 mb-1.5">
+                    <span className="text-sm shrink-0">{e.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">{e.event}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge variant="secondary" className="text-[10px]">{e.type}</Badge>
+                        <span className="text-[10px] text-muted-foreground">{e.time}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium">Model Confidence</p>
+                  <p className="text-[11px] text-muted-foreground">Based on 2,847 vectorized knowledge chunks</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-primary tabular-nums">98.4%</p>
+                  <p className="text-[10px] text-muted-foreground">Last trained: 2h ago</p>
+                </div>
+              </div>
+            </div>
+          ))}
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -978,6 +1420,83 @@ export function RoleDashboard() {
           </p>
         </div>
       </div>
+
+      {/* ── Market Commentary & Deal Activity ──────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 opacity-0 animate-fade-in" style={{ animationDelay: "450ms" }}>
+        {/* LP Update Snapshot */}
+        <div className="glass rounded-xl p-5">
+          <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">
+            <Building2 className="w-4 h-4 text-primary" />
+            LP Update Snapshot
+          </h3>
+          <div className="space-y-3">
+            {[
+              { metric: "Fund VII Vintage", value: "2024", detail: "Investment period: Year 2 of 5" },
+              { metric: "Capital Called", value: "$1.75B / $2.4B", detail: "73% of commitments called" },
+              { metric: "Distributions to Date", value: "$420M", detail: "DPI: 0.24x (early vintage)" },
+              { metric: "Net Asset Value", value: "$3.12B", detail: "NAV per unit: $1.30" },
+              { metric: "Management Fee Rate", value: "1.75%", detail: "On committed capital during investment period" },
+              { metric: "Next LP Report", value: "Q1 2026", detail: "Due: April 15, 2026" },
+            ].map(item => (
+              <div key={item.metric} className="flex items-center justify-between py-1.5 border-b border-border/30 last:border-0">
+                <div>
+                  <p className="text-sm font-medium">{item.metric}</p>
+                  <p className="text-[10px] text-muted-foreground">{item.detail}</p>
+                </div>
+                <span className="text-sm font-semibold tabular-nums">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent Deal Activity */}
+        <div className="glass rounded-xl p-5">
+          <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">
+            <Activity className="w-4 h-4 text-primary" />
+            Recent Deal Activity
+          </h3>
+          <div className="space-y-2.5">
+            {[
+              { time: "Today", action: "Project Ironclad LOI submitted", detail: "Cybersecurity platform, $560M EV", icon: FileText, color: "text-blue-500" },
+              { time: "Yesterday", action: "Project Jupiter IC-1 materials distributed", detail: "Home health platform, $290M EV", icon: FileText, color: "text-purple-500" },
+              { time: "Mar 7", action: "Project Echo closing documents executed", detail: "HR tech platform, $215M EV — CLOSED", icon: Shield, color: "text-emerald-500" },
+              { time: "Mar 5", action: "Project Beacon QoE report received", detail: "Cloud SaaS, updated financials under review", icon: BarChart3, color: "text-amber-500" },
+              { time: "Mar 4", action: "Project Atlas management presentation", detail: "Healthcare platform, 2nd meeting with CEO/CFO", icon: Users, color: "text-blue-500" },
+              { time: "Mar 2", action: "Project Citadel approved at IC-3", detail: "Waste management, 4-1 vote, moving to closing", icon: Target, color: "text-emerald-500" },
+              { time: "Feb 28", action: "Project Granite IC-2 pass recommendation", detail: "Dental DSO, valuation concerns cited", icon: AlertTriangle, color: "text-red-500" },
+              { time: "Feb 25", action: "New deal sourced: Project Liberty", detail: "PayStream Financial, $445M EV, initial screening", icon: Sparkles, color: "text-primary" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-3 py-1.5">
+                <div className="flex flex-col items-center">
+                  <item.icon className={cn("w-3.5 h-3.5 shrink-0", item.color)} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium truncate">{item.action}</p>
+                    <span className="text-[10px] text-muted-foreground tabular-nums shrink-0 ml-2">{item.time}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{item.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Drill-Down Dialog ──────────────────────────────── */}
+      <Dialog open={drillDown.open} onOpenChange={closeDrillDown}>
+        <DialogContent className="max-w-2xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle>{drillDown.title}</DialogTitle>
+            {drillDown.subtitle && (
+              <p className="text-sm text-muted-foreground">{drillDown.subtitle}</p>
+            )}
+          </DialogHeader>
+          <ScrollArea className="max-h-[65vh] pr-2">
+            {drillDown.content}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
