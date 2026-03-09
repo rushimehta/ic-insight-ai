@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, User, Loader2, ThumbsUp, ThumbsDown, Search, Target, ChevronDown } from "lucide-react";
+import { Send, Sparkles, User, Loader2, ThumbsUp, ThumbsDown, Search, Target, ChevronDown, FileText, ExternalLink, BookOpen, Brain, AlertTriangle, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -7,12 +7,57 @@ import { useChat, ChatSource } from "@/hooks/useChat";
 import { SourceBadge } from "./SourceBadge";
 import { DocumentViewer } from "@/components/documents/DocumentViewer";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface PromptCategory {
   sector: string;
   color: string;
   prompts: string[];
 }
+
+// ─── Context-Aware Document References ─────────────────────────────
+
+interface DocumentRef {
+  title: string;
+  section: string;
+  route: string;
+  icon: typeof FileText;
+  relevance: string;
+}
+
+const documentRefs: Record<string, DocumentRef[]> = {
+  "atlas": [
+    { title: "Project Atlas — IC2 Investment Memo", section: "Financial Analysis & LBO Model", route: "/repository", icon: FileText, relevance: "Healthcare platform, $425M EV, 12.5x EBITDA" },
+    { title: "Project Atlas — Value Creation Bridge", section: "Revenue Synergies & Margin Expansion", route: "/repository", icon: TrendingUp, relevance: "100-day plan, add-on M&A pipeline" },
+  ],
+  "beacon": [
+    { title: "Project Beacon — IC1 Teaser", section: "Cloud SaaS Metrics & Unit Economics", route: "/repository", icon: FileText, relevance: "Technology, $680M EV, 42.5% ARR growth" },
+  ],
+  "citadel": [
+    { title: "Project Citadel — IC3 DD Summary", section: "Complete DD Workstream Report", route: "/repository", icon: BookOpen, relevance: "Industrials, $310M EV, waste management" },
+  ],
+  "delta": [
+    { title: "Project Delta — IC Final Memo", section: "Actuarial Review & Deal Terms", route: "/repository", icon: FileText, relevance: "Financial Services, $890M EV, insurance platform" },
+  ],
+  "echo": [
+    { title: "Project Echo — Post-IC Approval", section: "Closing Tracker & 100-Day Plan", route: "/repository", icon: FileText, relevance: "Technology, $215M EV, HR tech" },
+  ],
+  "granite": [
+    { title: "Project Granite — IC2 Pass Recommendation", section: "Pass Rationale & Lessons Learned", route: "/repository", icon: AlertTriangle, relevance: "Healthcare, $520M EV, dental DSO — PASSED" },
+  ],
+  "valuation": [
+    { title: "Project Atlas — Sensitivity Analysis", section: "Entry Multiple & Exit Scenario Tables", route: "/repository", icon: TrendingUp, relevance: "IRR sensitivity to entry multiple and exit timing" },
+    { title: "Project Delta — Sources & Uses", section: "Capital Structure & Returns Waterfall", route: "/repository", icon: FileText, relevance: "Debt/equity split, management rollover, fee structure" },
+  ],
+  "healthcare": [
+    { title: "Project Atlas — IC2 Investment Memo", section: "Healthcare Market Analysis", route: "/repository", icon: FileText, relevance: "Provider consolidation, reimbursement trends" },
+    { title: "Project Granite — Pass Recommendation", section: "Dental DSO Risk Assessment", route: "/repository", icon: AlertTriangle, relevance: "Payor mix, same-store growth, de novo economics" },
+  ],
+  "technology": [
+    { title: "Project Beacon — IC1 Teaser", section: "SaaS Metrics Deep Dive", route: "/repository", icon: Brain, relevance: "Rule of 40, NDR, LTV/CAC, ARR bridge" },
+    { title: "Project Echo — Approval Summary", section: "HR Tech Market Position", route: "/repository", icon: FileText, relevance: "TAM/SAM/SOM, competitive landscape" },
+  ],
+};
 
 const promptCategories: PromptCategory[] = [
   {
@@ -94,8 +139,36 @@ const promptCategories: PromptCategory[] = [
   },
 ];
 
+// Find relevant document references based on message content
+function findDocumentRefs(text: string): DocumentRef[] {
+  const lower = text.toLowerCase();
+  const refs: DocumentRef[] = [];
+  const seen = new Set<string>();
+
+  for (const [key, docRefs] of Object.entries(documentRefs)) {
+    if (lower.includes(key)) {
+      for (const ref of docRefs) {
+        if (!seen.has(ref.title)) {
+          refs.push(ref);
+          seen.add(ref.title);
+        }
+      }
+    }
+  }
+
+  // Also match general terms
+  if (lower.includes("ebitda") || lower.includes("multiple") || lower.includes("lbo")) {
+    for (const ref of documentRefs["valuation"] || []) {
+      if (!seen.has(ref.title)) { refs.push(ref); seen.add(ref.title); }
+    }
+  }
+
+  return refs.slice(0, 4);
+}
+
 export function AIChat() {
   const { messages, isLoading, sendMessage, submitFeedback } = useChat();
+  const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [selectedSource, setSelectedSource] = useState<ChatSource | null>(null);
   const [fullSourceContent, setFullSourceContent] = useState<string>("");
@@ -164,15 +237,27 @@ export function AIChat() {
       <div className={cn("flex flex-col h-[calc(100vh-120px)] transition-all duration-300", selectedSource ? "mr-[512px]" : "")}>
         {/* Header */}
         <div className="opacity-0 animate-fade-in mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-              <Target className="w-6 h-6 text-primary" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                <Target className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">Deal Advisor AI</h2>
+                <p className="text-muted-foreground text-sm">
+                  Query your IC knowledge base, analyze past decisions, and prepare for upcoming committees
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold">Deal Advisor AI</h2>
-              <p className="text-muted-foreground">
-                Query your IC knowledge base, analyze past decisions, and prepare for upcoming committees
-              </p>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/30 text-emerald-500">
+                <Brain className="w-3 h-3" />
+                6 IC Memos Indexed
+              </Badge>
+              <Badge variant="outline" className="text-[10px] gap-1 border-primary/30 text-primary">
+                <Sparkles className="w-3 h-3" />
+                Context-Aware
+              </Badge>
             </div>
           </div>
         </div>
@@ -198,6 +283,38 @@ export function AIChat() {
                   message.role === "assistant" ? "bg-secondary/50" : "bg-primary/10 border border-primary/20"
                 )}>
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  {/* Document References for AI responses */}
+                  {message.role === "assistant" && message.content && (() => {
+                    const refs = findDocumentRefs(message.content);
+                    if (refs.length === 0) return null;
+                    return (
+                      <div className="mt-3 pt-3 border-t border-border/50">
+                        <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                          <BookOpen className="w-3 h-3" />
+                          Related Documents:
+                        </p>
+                        <div className="space-y-1.5">
+                          {refs.map((ref, idx) => {
+                            const Icon = ref.icon;
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => navigate(ref.route)}
+                                className="w-full text-left flex items-start gap-2 p-2 rounded-lg bg-background/50 hover:bg-secondary/80 border border-border/30 hover:border-primary/30 transition-all group"
+                              >
+                                <Icon className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium group-hover:text-primary transition-colors truncate">{ref.title}</p>
+                                  <p className="text-[10px] text-muted-foreground">{ref.section}</p>
+                                </div>
+                                <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary shrink-0 mt-0.5" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {message.role === "assistant" && message.sources && message.sources.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-border/50">
                       <p className="text-xs text-muted-foreground mb-2">Sources:</p>

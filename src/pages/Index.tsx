@@ -15,6 +15,7 @@ const TAB_FROM_PATH: Record<string, string> = {
   "/questions": "questions",
   "/history": "history",
   "/chairman": "chairman",
+  "/calendar": "calendar",
   "/connectors": "connectors",
   "/admin": "admin",
 };

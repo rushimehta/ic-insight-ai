@@ -1,9 +1,13 @@
 import { useState, useCallback, useRef } from "react";
-import { Upload, FileText, Mail, X, CheckCircle, Loader2, AlertCircle, Search } from "lucide-react";
+import { Upload, FileText, Mail, X, CheckCircle, Loader2, AlertCircle, Search, Building2, Calendar, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useDocuments } from "@/hooks/useDocuments";
+import { useSectors } from "@/hooks/useSectors";
 import { DocumentSearch } from "./DocumentSearch";
 import { DocumentViewer } from "./DocumentViewer";
 
@@ -27,11 +31,26 @@ interface SelectedSource {
   };
 }
 
+const SECTOR_OPTIONS = [
+  { value: "healthcare", label: "Healthcare" },
+  { value: "technology", label: "Technology" },
+  { value: "industrials", label: "Industrials" },
+  { value: "financial_services", label: "Financial Services" },
+  { value: "consumer_retail", label: "Consumer / Retail" },
+  { value: "energy", label: "Energy" },
+  { value: "real_estate", label: "Real Estate" },
+  { value: "media_entertainment", label: "Media & Entertainment" },
+  { value: "infrastructure", label: "Infrastructure" },
+];
+
 export function DocumentUpload() {
   const { documents, isLoading, uploadDocument, deleteDocument } = useDocuments();
+  const { activeSectors } = useSectors();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
   const [selectedSource, setSelectedSource] = useState<SelectedSource | null>(null);
+  const [uploadSector, setUploadSector] = useState<string>("");
+  const [uploadDealName, setUploadDealName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -48,9 +67,12 @@ export function DocumentUpload() {
     for (const file of Array.from(files)) {
       const tempId = `temp-${Date.now()}-${file.name}`;
       setUploadingFiles(prev => new Set(prev).add(tempId));
-      
-      await uploadDocument(file);
-      
+
+      await uploadDocument(file, {
+        dealName: uploadDealName || undefined,
+        sector: uploadSector || undefined,
+      });
+
       setUploadingFiles(prev => {
         const next = new Set(prev);
         next.delete(tempId);
@@ -112,6 +134,59 @@ export function DocumentUpload() {
           </TabsList>
 
           <TabsContent value="upload" className="space-y-6">
+            {/* Tagging Section */}
+            <div className="glass rounded-xl p-4">
+              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Tag className="w-4 h-4 text-primary" />
+                Tag Your Upload
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Sector</label>
+                  <Select value={uploadSector} onValueChange={setUploadSector}>
+                    <SelectTrigger>
+                      <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Select sector (auto-tags year)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(activeSectors.length > 0 ? activeSectors : SECTOR_OPTIONS.map(s => ({ name: s.value, display_name: s.label }))).map(sector => (
+                        <SelectItem key={sector.name} value={sector.name}>
+                          {sector.display_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground mt-1">Year is automatically set from upload date</p>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Deal / Project Name</label>
+                  <Input
+                    value={uploadDealName}
+                    onChange={(e) => setUploadDealName(e.target.value)}
+                    placeholder="e.g., Project Atlas"
+                  />
+                </div>
+              </div>
+              {(uploadSector || uploadDealName) && (
+                <div className="flex items-center gap-2 mt-3">
+                  <span className="text-xs text-muted-foreground">Tags:</span>
+                  {uploadSector && (
+                    <Badge variant="secondary" className="text-xs">
+                      <Building2 className="w-3 h-3 mr-1" />
+                      {SECTOR_OPTIONS.find(s => s.value === uploadSector)?.label || uploadSector}
+                    </Badge>
+                  )}
+                  {uploadDealName && (
+                    <Badge variant="outline" className="text-xs">{uploadDealName}</Badge>
+                  )}
+                  <Badge variant="outline" className="text-xs">
+                    <Calendar className="w-3 h-3 mr-1" />
+                    {new Date().getFullYear()}
+                  </Badge>
+                </div>
+              )}
+            </div>
+
             {/* Upload Zone */}
             <div
               onDragOver={handleDragOver}
