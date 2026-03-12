@@ -140,7 +140,7 @@ interface Meeting {
 }
 
 interface DrillDownState {
-  type: "sector" | "vintage" | "deal" | "funnel" | "irr" | null;
+  type: "sector" | "vintage" | "deal" | "funnel" | "irr" | "kpi" | null;
   data: any;
   title: string;
 }
@@ -279,16 +279,92 @@ export function AnalyticsDashboard() {
       {/* KPI Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 opacity-0 animate-fade-in" style={{ animationDelay: "50ms" }}>
         {[
-          { label: "Net IRR", value: "18.4%", sub: "+2.1pp vs F6", positive: true },
-          { label: "Gross MOIC", value: "2.3x", sub: "Top quartile", positive: true },
-          { label: "DPI", value: "0.4x", sub: "Early vintage" },
-          { label: "TVPI", value: "1.8x", sub: "vs 1.5x median", positive: true },
-          { label: "Deals Closed", value: "14", sub: "6 in pipeline" },
-          { label: "Avg Hold", value: "4.2y", sub: "Target 4-5y" },
-          { label: "Loss Ratio", value: "4.2%", sub: "Below 5% target", positive: true },
-          { label: "IC Pass Rate", value: "67%", sub: "Last 12 months" },
+          { label: "Net IRR", value: "18.4%", sub: "+2.1pp vs F6", positive: true, detail: {
+            title: "Net IRR Analysis — 18.4%",
+            metrics: [
+              { label: "Fund VII Net IRR", value: "18.4%" },
+              { label: "Fund VI Net IRR", value: "16.3%" },
+              { label: "Peer Median", value: "14.2%" },
+              { label: "Top Quartile", value: "21.0%" },
+            ],
+            insight: "Fund VII is tracking 2.1pp above Fund VI at the same point in lifecycle and sits comfortably in the top quartile. Key driver is higher entry quality — average EBITDA margin of our portfolio is 21% vs 17% in Fund VI."
+          }},
+          { label: "Gross MOIC", value: "2.3x", sub: "Top quartile", positive: true, detail: {
+            title: "Gross MOIC Breakdown — 2.3x",
+            metrics: [
+              { label: "Realized MOIC", value: "2.8x" },
+              { label: "Unrealized MOIC", value: "1.9x" },
+              { label: "Fund VI MOIC (same vintage)", value: "2.0x" },
+              { label: "Benchmark Median", value: "1.7x" },
+            ],
+            insight: "Realized exits are driving strong MOIC at 2.8x. Unrealized portfolio at 1.9x has upside as 3 investments are in active value creation phase with exit timelines in 2027-2028."
+          }},
+          { label: "DPI", value: "0.4x", sub: "Early vintage", detail: {
+            title: "DPI (Distributions to Paid-In) — 0.4x",
+            metrics: [
+              { label: "Total Distributions", value: "$560M" },
+              { label: "Total Paid-In Capital", value: "$1.4B" },
+              { label: "Fund VI DPI (same age)", value: "0.3x" },
+              { label: "Peer Median", value: "0.2x" },
+            ],
+            insight: "DPI of 0.4x is ahead of plan for this vintage stage. Early partial exit from TalentBridge HR Tech contributed $180M in distributions. Two more exits planned for H2 2026."
+          }},
+          { label: "TVPI", value: "1.8x", sub: "vs 1.5x median", positive: true, detail: {
+            title: "TVPI (Total Value to Paid-In) — 1.8x",
+            metrics: [
+              { label: "NAV", value: "$2.52B" },
+              { label: "Distributions", value: "$560M" },
+              { label: "Paid-In Capital", value: "$1.4B" },
+              { label: "Peer Median TVPI", value: "1.5x" },
+            ],
+            insight: "TVPI of 1.8x reflects strong portfolio appreciation. 60% of NAV is supported by recent third-party valuations or comparable transactions, providing confidence in markings."
+          }},
+          { label: "Deals Closed", value: "14", sub: "6 in pipeline", detail: {
+            title: "Deal Activity — 14 Closed, 6 in Pipeline",
+            metrics: [
+              { label: "Deals Closed (Fund VII)", value: "14" },
+              { label: "Currently in Pipeline", value: "6" },
+              { label: "Avg Deal Size", value: "$165M equity" },
+              { label: "Capital Deployed", value: "$2.31B (96%)" },
+            ],
+            insight: "Fund VII is 96% deployed across 14 investments. Remaining $90M reserved for follow-on investments in existing portfolio companies. 6 new opportunities in active evaluation for Fund VIII."
+          }},
+          { label: "Avg Hold", value: "4.2y", sub: "Target 4-5y", detail: {
+            title: "Average Hold Period — 4.2 Years",
+            metrics: [
+              { label: "Avg Hold (Realized)", value: "3.8 years" },
+              { label: "Avg Hold (Unrealized)", value: "4.5 years" },
+              { label: "Target Hold Period", value: "4-5 years" },
+              { label: "Longest Hold", value: "6.2 years" },
+            ],
+            insight: "Portfolio is within target hold period. Realized exits averaged 3.8 years driven by strong buy-and-build execution. Two investments at 5+ year marks are in active exit processes."
+          }},
+          { label: "Loss Ratio", value: "4.2%", sub: "Below 5% target", positive: true, detail: {
+            title: "Loss Ratio — 4.2%",
+            metrics: [
+              { label: "Write-Downs", value: "$58.8M" },
+              { label: "Total Invested", value: "$1.4B" },
+              { label: "Target Max Loss Ratio", value: "5.0%" },
+              { label: "Fund VI Loss Ratio", value: "6.8%" },
+            ],
+            insight: "Loss ratio of 4.2% is well below the 5% target and significantly improved from Fund VI (6.8%). Only one partial write-down across the portfolio — improved due diligence processes are a key factor."
+          }},
+          { label: "IC Pass Rate", value: "67%", sub: "Last 12 months", detail: {
+            title: "IC Pass Rate — 67%",
+            metrics: [
+              { label: "Deals Presented to IC", value: "36" },
+              { label: "Approved", value: "24" },
+              { label: "Rejected", value: "8" },
+              { label: "Deferred", value: "4" },
+            ],
+            insight: "67% approval rate reflects disciplined but not overly restrictive IC process. Deferred deals (11%) often return with improved terms — 75% of deferred deals were eventually approved after re-presentation."
+          }},
         ].map((kpi, i) => (
-          <div key={i} className="metric-card text-center">
+          <div
+            key={i}
+            className="metric-card text-center cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+            onClick={() => setDrillDown({ type: "kpi", data: kpi.detail, title: kpi.detail.title })}
+          >
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1">{kpi.label}</p>
             <p className="text-lg font-bold tabular-nums leading-none">{kpi.value}</p>
             <div className={cn("flex items-center justify-center gap-0.5 mt-1 text-[10px]", kpi.positive ? "text-emerald-500" : "text-muted-foreground")}>
@@ -996,6 +1072,28 @@ export function AnalyticsDashboard() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {drillDown.type === "kpi" && drillDown.data && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {drillDown.data.metrics.map((m: any) => (
+                    <div key={m.label} className="p-3 rounded-lg bg-secondary/50 text-center">
+                      <p className="text-xs text-muted-foreground">{m.label}</p>
+                      <p className="text-xl font-bold tabular-nums">{m.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-medium">AI Analysis</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{drillDown.data.insight}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

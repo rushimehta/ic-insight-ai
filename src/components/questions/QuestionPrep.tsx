@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Users, Briefcase, ChevronRight, ChevronDown, Star, Clock, TrendingUp, Loader2, Target, Shield, MessageSquare, ArrowLeft, Lightbulb, BookOpen, CheckCircle2, AlertTriangle, BarChart3 } from "lucide-react";
+import { Users, Briefcase, ChevronRight, ChevronDown, Star, Clock, TrendingUp, Loader2, Target, Shield, MessageSquare, ArrowLeft, Lightbulb, BookOpen, CheckCircle2, AlertTriangle, BarChart3, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useQuestions } from "@/hooks/useQuestions";
 import { useNavigate } from "react-router-dom";
@@ -142,6 +143,8 @@ export function QuestionPrep() {
   const { questions: dbQuestions, isLoading, fetchQuestions } = useQuestions();
   const navigate = useNavigate();
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
 
   useEffect(() => {
     fetchQuestions(viewMode === "deal-team" ? "deal_team" : "ic_member");
@@ -188,6 +191,34 @@ export function QuestionPrep() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex items-center gap-2 justify-end">
+        <Filter className="w-4 h-4 text-muted-foreground" />
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[150px] h-8 text-xs">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="financial">Financial</SelectItem>
+            <SelectItem value="operational">Operational</SelectItem>
+            <SelectItem value="market">Market / Strategy</SelectItem>
+            <SelectItem value="risk">Risk / Legal</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+          <SelectTrigger className="w-[130px] h-8 text-xs">
+            <SelectValue placeholder="All Priority" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Priority</SelectItem>
+            <SelectItem value="critical">Critical</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* View Toggle */}
