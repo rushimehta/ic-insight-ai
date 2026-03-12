@@ -26,6 +26,7 @@ import {
   Building2,
   Briefcase,
   Layers,
+  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -863,6 +864,8 @@ export function DealKanban() {
   const [filterSector, setFilterSector] = useState<string>("all");
   const [filterPartner, setFilterPartner] = useState<string>("all");
   const [filterICStage, setFilterICStage] = useState<string>("all");
+  const [sectorFilter, setSectorFilter] = useState("all");
+  const [dealTypeFilter, setDealTypeFilter] = useState("all");
 
   // Sort
   const [sortKey, setSortKey] = useState<SortKey>("updated_at");
@@ -1173,6 +1176,35 @@ export function DealKanban() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Deal Type filter */}
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <Select value={sectorFilter} onValueChange={setSectorFilter}>
+            <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectValue placeholder="All Sectors" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sectors</SelectItem>
+              <SelectItem value="Healthcare">Healthcare</SelectItem>
+              <SelectItem value="Technology">Technology</SelectItem>
+              <SelectItem value="Financial Services">Fin. Services</SelectItem>
+              <SelectItem value="Industrials">Industrials</SelectItem>
+              <SelectItem value="Consumer">Consumer</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={dealTypeFilter} onValueChange={setDealTypeFilter}>
+            <SelectTrigger className="w-[130px] h-8 text-xs">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="lbo">LBO</SelectItem>
+              <SelectItem value="growth">Growth Equity</SelectItem>
+              <SelectItem value="platform">Platform</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="h-5 w-px bg-border" />
 

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock,
-  Users, Building2, Briefcase, Target, X, MapPin
+  Users, Building2, Briefcase, Target, X, MapPin, Video
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,7 @@ interface ICMeeting {
   equityCheck: string;
   sponsor: string;
   location: string;
+  meetingLink: string;
   agenda: string[];
   priority: "critical" | "high" | "medium" | "normal";
   status: "confirmed" | "tentative" | "rescheduled";
@@ -45,7 +46,7 @@ const sampleICMeetings: ICMeeting[] = [
     ],
     icMembers: ["R. Chen (Chair)", "S. Williams", "D. Kim", "J. Lee", "M. Brown"],
     ev: "$890M", equityCheck: "$420M", sponsor: "Fund VII",
-    location: "Main Board Room", priority: "critical", status: "confirmed",
+    location: "Main Board Room", meetingLink: "https://zoom.us/j/ic-meeting-cal-1", priority: "critical", status: "confirmed",
     agenda: [
       "Final terms review and updated LBO model",
       "Management employment agreements status",
@@ -67,7 +68,7 @@ const sampleICMeetings: ICMeeting[] = [
     ],
     icMembers: ["R. Chen (Chair)", "S. Williams", "D. Kim", "J. Lee", "M. Brown"],
     ev: "$425M", equityCheck: "$185M", sponsor: "Fund VII",
-    location: "Conference Room A", priority: "high", status: "confirmed",
+    location: "Conference Room A", meetingLink: "https://zoom.us/j/ic-meeting-cal-2", priority: "high", status: "confirmed",
     agenda: [
       "Commercial DD findings presentation",
       "Updated financial model with QoE adjustments",
@@ -88,7 +89,7 @@ const sampleICMeetings: ICMeeting[] = [
     ],
     icMembers: ["R. Chen (Chair)", "S. Williams", "D. Kim", "J. Lee", "M. Brown"],
     ev: "$680M", equityCheck: "$310M", sponsor: "Fund VII",
-    location: "Virtual / Teams", priority: "medium", status: "confirmed",
+    location: "Virtual / Teams", meetingLink: "https://teams.microsoft.com/l/meetup-join/ic-meeting-cal-3", priority: "medium", status: "confirmed",
     agenda: [
       "Company and market overview",
       "Investment thesis presentation",
@@ -109,7 +110,7 @@ const sampleICMeetings: ICMeeting[] = [
     ],
     icMembers: ["R. Chen (Chair)", "S. Williams", "D. Kim", "J. Lee"],
     ev: "$290M", equityCheck: "$118M", sponsor: "Fund VII",
-    location: "Main Board Room", priority: "medium", status: "confirmed",
+    location: "Main Board Room", meetingLink: "https://zoom.us/j/ic-meeting-cal-4", priority: "medium", status: "confirmed",
     agenda: [
       "Home health market landscape",
       "Company positioning and competitive advantages",
@@ -130,7 +131,7 @@ const sampleICMeetings: ICMeeting[] = [
     ],
     icMembers: ["R. Chen (Chair)", "S. Williams", "D. Kim", "J. Lee", "M. Brown"],
     ev: "$340M", equityCheck: "$195M", sponsor: "Fund VII",
-    location: "Conference Room B", priority: "normal", status: "tentative",
+    location: "Conference Room B", meetingLink: "https://zoom.us/j/ic-meeting-cal-5", priority: "normal", status: "tentative",
     agenda: [
       "Updated market analysis per IC feedback",
       "Revised financial projections",
@@ -151,7 +152,7 @@ const sampleICMeetings: ICMeeting[] = [
     ],
     icMembers: ["R. Chen (Chair)", "S. Williams", "D. Kim", "J. Lee", "M. Brown"],
     ev: "$385M", equityCheck: "$165M", sponsor: "Fund VII",
-    location: "Main Board Room", priority: "normal", status: "confirmed",
+    location: "Main Board Room", meetingLink: "https://zoom.us/j/ic-meeting-cal-6", priority: "normal", status: "confirmed",
     agenda: [
       "Consumer brands portfolio overview",
       "Channel strategy and DTC growth plan",
@@ -172,7 +173,7 @@ const sampleICMeetings: ICMeeting[] = [
     ],
     icMembers: ["R. Chen (Chair)", "S. Williams", "D. Kim"],
     ev: "$560M", equityCheck: "$340M", sponsor: "Fund VII",
-    location: "Virtual / Teams", priority: "medium", status: "tentative",
+    location: "Virtual / Teams", meetingLink: "https://teams.microsoft.com/l/meetup-join/ic-meeting-cal-7", priority: "medium", status: "tentative",
     agenda: [
       "Cybersecurity market thesis overview",
       "Competitive landscape positioning",
@@ -193,7 +194,7 @@ const sampleICMeetings: ICMeeting[] = [
     ],
     icMembers: ["R. Chen (Chair)", "S. Williams", "D. Kim", "J. Lee", "M. Brown"],
     ev: "$310M", equityCheck: "$125M", sponsor: "Fund VII",
-    location: "Main Board Room", priority: "critical", status: "confirmed",
+    location: "Main Board Room", meetingLink: "https://zoom.us/j/ic-meeting-cal-8", priority: "critical", status: "confirmed",
     agenda: [
       "Full DD findings summary",
       "Final LBO model and sensitivity analysis",
@@ -525,6 +526,18 @@ export function ICCalendar() {
                 <p className="text-sm font-medium tabular-nums">{meeting.time}</p>
                 <p className="text-xs text-muted-foreground">{meeting.duration}</p>
               </div>
+              <div className="shrink-0 ml-2">
+                <a
+                  href={meeting.meetingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                  title={meeting.location.includes("Virtual") ? "Join Teams" : "Join Zoom"}
+                >
+                  <Video className="w-4 h-4 text-primary" />
+                </a>
+              </div>
             </button>
           ))}
         </div>
@@ -575,6 +588,32 @@ export function ICCalendar() {
                   <Badge variant="outline" className={cn("text-[10px] border", priorityConfig[selectedMeeting.priority].badge)}>
                     {priorityConfig[selectedMeeting.priority].label} Priority
                   </Badge>
+                </div>
+
+                {/* Meeting Link */}
+                <div className="flex items-center gap-2 text-sm">
+                  <Video className="w-4 h-4 text-muted-foreground" />
+                  <a
+                    href={selectedMeeting.meetingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {selectedMeeting.location.includes("Virtual") || selectedMeeting.location.includes("Teams")
+                      ? "Join Microsoft Teams Meeting"
+                      : "Join via Zoom (Remote Dial-In)"}
+                  </a>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-[10px] h-6 px-2 ml-auto"
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedMeeting.meetingLink);
+                      // Could add toast here
+                    }}
+                  >
+                    Copy Link
+                  </Button>
                 </div>
 
                 {/* Deal Team */}

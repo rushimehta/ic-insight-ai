@@ -80,7 +80,9 @@ export function UserManagement() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isResettingMFA, setIsResettingMFA] = useState(false);
   const [editEmail, setEditEmail] = useState("");
-  
+  const [ssoEmail, setSsoEmail] = useState("");
+  const [editSsoEmail, setEditSsoEmail] = useState("");
+
   // Edit profile fields
   const [editJobTitle, setEditJobTitle] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
@@ -253,6 +255,7 @@ export function UserManagement() {
       setSelectedRoles([]);
       setSelectedSectors([]);
       setAllSectorsAccess(false);
+      setSsoEmail("");
       setShowEmailPreview(false);
       fetchUsers();
       fetchUserSectors();
@@ -319,6 +322,7 @@ export function UserManagement() {
     setEditBio(user.profile?.bio || "");
     setEditLinkedin(user.profile?.linkedin_url || "");
     setEditEmail(user.email);
+    setEditSsoEmail("");
   };
 
   const handleResetMFA = async (userId: string) => {
@@ -551,6 +555,21 @@ export function UserManagement() {
                       />
                     </div>
                   </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="ssoEmail">SSO Email (Optional)</Label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="ssoEmail"
+                        type="email"
+                        placeholder="user@company-sso.com"
+                        value={ssoEmail}
+                        onChange={(e) => setSsoEmail(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">If different from login email. Used for SSO identity mapping.</p>
+                  </div>
                 </div>
               </div>
 
@@ -675,6 +694,37 @@ export function UserManagement() {
                       {sector.display_name}
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Security Instructions */}
+              <div className="space-y-3 p-4 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-amber-500" />
+                  Security Configuration
+                </h4>
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <div className="flex items-start gap-2">
+                    <KeyRound className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Multi-Factor Authentication (MFA)</p>
+                      <p>MFA is enforced for all users by default. New users will be prompted to set up an authenticator app (TOTP) on first login. Admins can reset MFA from the Manage Users tab if a user loses access to their device.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Globe className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Single Sign-On (SSO)</p>
+                      <p>If SSO is enabled (Azure AD, Google Workspace, or Okta), users will authenticate through your organization's identity provider. SSO email must match the configured IdP domain. MFA through the IdP replaces platform-level MFA when SSO is active. Configure SSO providers in the SSO Configuration tab.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Password Policy</p>
+                      <p>Minimum 12 characters with uppercase, lowercase, number, and special character required. Passwords expire every 90 days. Previous 5 passwords cannot be reused.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -970,6 +1020,21 @@ export function UserManagement() {
                     )}
                   </Button>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-sso-email">SSO Email</Label>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="edit-sso-email"
+                    type="email"
+                    placeholder="user@company-sso.com"
+                    value={editSsoEmail}
+                    onChange={(e) => setEditSsoEmail(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">SSO identity provider email for federated login</p>
               </div>
             </div>
 

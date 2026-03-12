@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Calendar, Filter, FileText, Users, Clock, CheckCircle, XCircle, AlertCircle, Loader2, TrendingUp, DollarSign, ArrowRight, BarChart3, ChevronRight } from "lucide-react";
+import { Search, Calendar, Filter, FileText, Users, Clock, CheckCircle, XCircle, AlertCircle, Loader2, TrendingUp, DollarSign, ArrowRight, BarChart3, ChevronRight, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +20,57 @@ interface ICMeeting {
   summary: string | null;
   key_concerns: string[] | null;
 }
+
+const sampleHistoryMeetings: ICMeeting[] = [
+  {
+    id: "hist-1", deal_name: "NexGen Insurance Group", sector: "financial_services",
+    meeting_date: "2026-02-18", outcome: "approved", deal_size: "$890M",
+    attendees: ["R. Chen", "S. Williams", "D. Kim", "J. Lee", "M. Brown"],
+    questions_asked: ["What is the regulatory risk profile?", "How does the LBO model hold under stress scenarios?", "What are the management retention terms?"],
+    summary: "Final IC approved the acquisition of NexGen Insurance Group at $890M EV. Strong consensus on the thesis around consolidation in specialty insurance. Management buyout structure approved with standard incentive terms.",
+    key_concerns: ["Regulatory approval timeline", "Integration complexity", "Rate environment sensitivity"]
+  },
+  {
+    id: "hist-2", deal_name: "TalentBridge HR Tech", sector: "technology",
+    meeting_date: "2026-01-28", outcome: "approved", deal_size: "$215M",
+    attendees: ["R. Chen", "S. Williams", "D. Kim", "J. Lee"],
+    questions_asked: ["What drives the 58% revenue growth?", "How defensible is the AI matching technology?", "What is the path to profitability?"],
+    summary: "Growth equity investment in TalentBridge approved. Committee impressed by the AI-driven talent matching platform and strong unit economics. $145M equity check from Fund VII.",
+    key_concerns: ["Customer concentration", "Competitive moat durability", "Cash burn rate"]
+  },
+  {
+    id: "hist-3", deal_name: "Apex Dental Partners", sector: "healthcare",
+    meeting_date: "2026-01-15", outcome: "rejected", deal_size: "$520M",
+    attendees: ["R. Chen", "S. Williams", "D. Kim", "J. Lee", "M. Brown"],
+    questions_asked: ["What justifies the 15.3x multiple for a dental roll-up?", "How fragmented is the remaining market?", "What are the integration risks?"],
+    summary: "IC declined to proceed with Apex Dental Partners. Concerns around high entry multiple (15.3x EBITDA) relative to achievable synergies and the maturing dental consolidation landscape.",
+    key_concerns: ["High entry multiple", "Market saturation", "Dentist retention risk", "Reimbursement pressure"]
+  },
+  {
+    id: "hist-4", deal_name: "Premier Waste Solutions", sector: "industrials",
+    meeting_date: "2025-12-10", outcome: "approved", deal_size: "$310M",
+    attendees: ["R. Chen", "S. Williams", "D. Kim", "J. Lee", "M. Brown"],
+    questions_asked: ["What are the environmental liability risks?", "How sustainable are the route density economics?", "What is the M&A pipeline for tuck-ins?"],
+    summary: "Approved at IC-2 to proceed to final due diligence. Strong industrial thesis around waste management consolidation. Attractive entry multiple of 9.8x with clear path to value creation via route optimization.",
+    key_concerns: ["Environmental liabilities", "Municipal contract renewals", "Fuel cost volatility"]
+  },
+  {
+    id: "hist-5", deal_name: "CloudScale Systems", sector: "technology",
+    meeting_date: "2025-11-20", outcome: "deferred", deal_size: "$680M",
+    attendees: ["R. Chen", "S. Williams", "D. Kim"],
+    questions_asked: ["Can the 42% growth sustain post-expansion?", "What is the competitive positioning vs hyperscalers?", "Is the $680M valuation justified?"],
+    summary: "IC deferred the CloudScale investment for additional analysis. Committee wants to see updated customer churn data and a more detailed competitive positioning study before proceeding.",
+    key_concerns: ["Valuation richness", "Hyperscaler competition", "Customer churn trends"]
+  },
+  {
+    id: "hist-6", deal_name: "MedDevice Holdings Inc.", sector: "healthcare",
+    meeting_date: "2025-10-05", outcome: "approved", deal_size: "$425M",
+    attendees: ["R. Chen", "S. Williams", "D. Kim", "J. Lee", "M. Brown"],
+    questions_asked: ["What are the FDA pipeline risks?", "How concentrated is the customer base?", "What synergies come from the add-on strategy?"],
+    summary: "IC-1 approved advancement to DD phase. Strong medical device platform with 14% organic growth and a compelling add-on acquisition pipeline. $2.8M DD expense budget authorized.",
+    key_concerns: ["FDA regulatory risk", "Customer concentration >15%", "Reimbursement headwinds"]
+  },
+];
 
 const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; bg: string; label: string }> = {
   approved: { icon: CheckCircle, color: "text-success", bg: "bg-success/10", label: "Approved" },
@@ -50,6 +101,9 @@ export function ICHistory() {
 
       if (error) throw error;
       setMeetings(data || []);
+      if (!data || data.length === 0) {
+        setMeetings(sampleHistoryMeetings);
+      }
     } catch (error) {
       console.error("Error fetching IC meetings:", error);
       toast.error("Failed to load IC history");

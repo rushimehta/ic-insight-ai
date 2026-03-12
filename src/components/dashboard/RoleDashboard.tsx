@@ -3,7 +3,7 @@ import {
   FileText, MessageSquare, Clock, DollarSign, Target, ArrowUpRight,
   BarChart3, Activity, ChevronRight, ChevronDown,
   Layers, Zap, Globe, Sparkles, Calendar, ArrowRight, X,
-  AlertTriangle, TrendingUp, Brain, Building2, Users, Shield
+  AlertTriangle, TrendingUp, Brain, Building2, Users, Shield, Filter
 } from "lucide-react";
 import { InsightCard } from "./InsightCard";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import {
   ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
@@ -315,6 +316,9 @@ export function RoleDashboard() {
   const [expandedDealId, setExpandedDealId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [drillDown, setDrillDown] = useState<DrillDown>({ open: false, title: "", content: null });
+  const [sectorFilter, setSectorFilter] = useState("all");
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const closeDrillDown = () => setDrillDown(prev => ({ ...prev, open: false }));
 
@@ -379,6 +383,48 @@ export function RoleDashboard() {
             </Badge>
           </div>
         </div>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="flex items-center gap-2 justify-end opacity-0 animate-fade-in" style={{ animationDelay: "25ms" }}>
+        <Filter className="w-4 h-4 text-muted-foreground" />
+        <Select value={sectorFilter} onValueChange={setSectorFilter}>
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue placeholder="All Sectors" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sectors</SelectItem>
+            <SelectItem value="Healthcare">Healthcare</SelectItem>
+            <SelectItem value="Technology">Technology</SelectItem>
+            <SelectItem value="Financial Services">Fin. Services</SelectItem>
+            <SelectItem value="Industrials">Industrials</SelectItem>
+            <SelectItem value="Consumer">Consumer</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={timeFilter} onValueChange={setTimeFilter}>
+          <SelectTrigger className="w-[130px] h-8 text-xs">
+            <SelectValue placeholder="All Time" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="7d">Last 7 Days</SelectItem>
+            <SelectItem value="30d">Last 30 Days</SelectItem>
+            <SelectItem value="90d">Last 90 Days</SelectItem>
+            <SelectItem value="ytd">Year to Date</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[130px] h-8 text-xs">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="pending">Pending IC</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="closed">Closed</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* ── KPI Strip ───────────────────────────────────────── */}

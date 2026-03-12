@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   FileText, Plus, Sparkles, Loader2, Trash2, Eye, Calendar, Building2,
   DollarSign, TrendingUp, Users, Shield, BarChart3, Target, Briefcase,
-  AlertTriangle, ArrowRight, Layers, CheckCircle2, Globe
+  AlertTriangle, ArrowRight, Layers, CheckCircle2, Globe, Filter
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,8 @@ export function ICDocumentGenerator() {
   const { activeSectors } = useSectors();
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [docStatusFilter, setDocStatusFilter] = useState("all");
+  const [docSectorFilter, setDocSectorFilter] = useState("all");
 
   const selectedDraft = drafts.find(d => d.id === selectedDraftId);
 
@@ -88,6 +90,35 @@ export function ICDocumentGenerator() {
             {drafts.length} memo{drafts.length !== 1 ? "s" : ""}
           </Badge>
         </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex items-center gap-2">
+        <Filter className="w-4 h-4 text-muted-foreground" />
+        <Select value={docStatusFilter} onValueChange={setDocStatusFilter}>
+          <SelectTrigger className="w-[130px] h-8 text-xs">
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="review">In Review</SelectItem>
+            <SelectItem value="final">Final</SelectItem>
+            <SelectItem value="presented">Presented</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={docSectorFilter} onValueChange={setDocSectorFilter}>
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue placeholder="All Sectors" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sectors</SelectItem>
+            <SelectItem value="healthcare">Healthcare</SelectItem>
+            <SelectItem value="technology">Technology</SelectItem>
+            <SelectItem value="financial_services">Fin. Services</SelectItem>
+            <SelectItem value="industrials">Industrials</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
