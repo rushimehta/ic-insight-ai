@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Search, Calendar, Filter, FileText, Users, Clock, CheckCircle, XCircle, AlertCircle, Loader2, TrendingUp, DollarSign, ArrowRight, BarChart3, ChevronRight, MessageSquare } from "lucide-react";
+import { Search, Calendar, Filter, FileText, Users, Clock, CheckCircle, XCircle, AlertCircle, Loader2, TrendingUp, DollarSign, ArrowRight, BarChart3, ChevronRight, MessageSquare, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -87,6 +88,7 @@ export function ICHistory() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sectorFilter, setSectorFilter] = useState<string>("all");
   const [selectedMeeting, setSelectedMeeting] = useState<ICMeeting | null>(null);
+  const [drillDownKPI, setDrillDownKPI] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMeetings();
@@ -150,7 +152,7 @@ export function ICHistory() {
 
       {/* Summary KPIs */}
       <div className="grid grid-cols-4 gap-3 opacity-0 animate-fade-in" style={{ animationDelay: "50ms" }}>
-        <div className="metric-card-compact flex items-center gap-3">
+        <div className="metric-card-compact flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" onClick={() => setDrillDownKPI("total")}>
           <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
             <BarChart3 className="w-4 h-4 text-primary" />
           </div>
@@ -159,7 +161,7 @@ export function ICHistory() {
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Meetings</p>
           </div>
         </div>
-        <div className="metric-card-compact flex items-center gap-3">
+        <div className="metric-card-compact flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" onClick={() => setDrillDownKPI("approved")}>
           <div className="w-8 h-8 rounded-md bg-emerald-500/10 flex items-center justify-center">
             <CheckCircle className="w-4 h-4 text-emerald-500" />
           </div>
@@ -168,7 +170,7 @@ export function ICHistory() {
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Approved</p>
           </div>
         </div>
-        <div className="metric-card-compact flex items-center gap-3">
+        <div className="metric-card-compact flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" onClick={() => setDrillDownKPI("rejected")}>
           <div className="w-8 h-8 rounded-md bg-red-500/10 flex items-center justify-center">
             <XCircle className="w-4 h-4 text-red-500" />
           </div>
@@ -177,7 +179,7 @@ export function ICHistory() {
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Rejected</p>
           </div>
         </div>
-        <div className="metric-card-compact flex items-center gap-3">
+        <div className="metric-card-compact flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" onClick={() => setDrillDownKPI("rate")}>
           <div className="w-8 h-8 rounded-md bg-blue-500/10 flex items-center justify-center">
             <TrendingUp className="w-4 h-4 text-blue-500" />
           </div>
@@ -187,6 +189,329 @@ export function ICHistory() {
           </div>
         </div>
       </div>
+
+      {/* KPI Drill-Down Dialog */}
+      <Dialog open={drillDownKPI !== null} onOpenChange={(open) => !open && setDrillDownKPI(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          {drillDownKPI === "total" && (() => {
+            const bySector: Record<string, number> = {};
+            const byQuarter: Record<string, number> = {};
+            const byYear: Record<string, number> = {};
+            meetings.forEach(m => {
+              const s = (m.sector || "Unknown").replace(/_/g, " ");
+              bySector[s] = (bySector[s] || 0) + 1;
+              const d = new Date(m.meeting_date);
+              const yr = d.getFullYear().toString();
+              byYear[yr] = (byYear[yr] || 0) + 1;
+              const q = `Q${Math.ceil((d.getMonth() + 1) / 3)} ${yr}`;
+              byQuarter[q] = (byQuarter[q] || 0) + 1;
+            });
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-primary" />
+                    Total Meetings Breakdown
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-5">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">By Sector</p>
+                    <div className="space-y-1.5">
+                      {Object.entries(bySector).sort((a, b) => b[1] - a[1]).map(([sector, count]) => (
+                        <div key={sector} className="flex justify-between items-center text-sm">
+                          <span className="capitalize">{sector}</span>
+                          <span className="font-semibold tabular-nums">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">By Quarter</p>
+                    <div className="space-y-1.5">
+                      {Object.entries(byQuarter).sort().reverse().map(([quarter, count]) => (
+                        <div key={quarter} className="flex justify-between items-center text-sm">
+                          <span>{quarter}</span>
+                          <span className="font-semibold tabular-nums">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">By Year</p>
+                    <div className="space-y-1.5">
+                      {Object.entries(byYear).sort().reverse().map(([year, count]) => (
+                        <div key={year} className="flex justify-between items-center text-sm">
+                          <span>{year}</span>
+                          <span className="font-semibold tabular-nums">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">All Meetings</p>
+                    <div className="space-y-1.5">
+                      {meetings.map(m => (
+                        <div key={m.id} className="flex justify-between items-center text-sm">
+                          <span>{m.deal_name}</span>
+                          <span className="text-xs text-muted-foreground">{new Date(m.meeting_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-semibold">AI Insight</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {totalMeetings > 0
+                        ? `The IC has reviewed ${totalMeetings} deal${totalMeetings > 1 ? "s" : ""} across ${Object.keys(bySector).length} sector${Object.keys(bySector).length > 1 ? "s" : ""}. ${Object.entries(bySector).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A"} leads in meeting volume with ${Object.entries(bySector).sort((a, b) => b[1] - a[1])[0]?.[1] || 0} meetings. ${Object.keys(byQuarter).length > 1 ? "Deal flow has been consistent across quarters, indicating a healthy pipeline and active sourcing cadence." : "Meeting activity is concentrated in a single quarter — consider whether pipeline diversification is needed."}`
+                        : "No meeting data available to analyze trends."}
+                    </p>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
+          {drillDownKPI === "approved" && (() => {
+            const approvedMeetings = meetings.filter(m => m.outcome === "approved");
+            const totalValue = approvedMeetings.reduce((sum, m) => {
+              if (!m.deal_size) return sum;
+              const num = parseFloat(m.deal_size.replace(/[^0-9.]/g, ""));
+              return sum + (isNaN(num) ? 0 : num);
+            }, 0);
+            const bySector: Record<string, { count: number; value: number }> = {};
+            approvedMeetings.forEach(m => {
+              const s = (m.sector || "Unknown").replace(/_/g, " ");
+              if (!bySector[s]) bySector[s] = { count: 0, value: 0 };
+              bySector[s].count += 1;
+              if (m.deal_size) {
+                const num = parseFloat(m.deal_size.replace(/[^0-9.]/g, ""));
+                if (!isNaN(num)) bySector[s].value += num;
+              }
+            });
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-emerald-500" />
+                    Approved Deals Detail
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-5">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-emerald-500/10 rounded-lg p-3 text-center flex-1">
+                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{approvedCount}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Deals Approved</p>
+                    </div>
+                    <div className="bg-emerald-500/10 rounded-lg p-3 text-center flex-1">
+                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">${totalValue.toLocaleString()}M</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Value</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">By Sector</p>
+                    <div className="space-y-1.5">
+                      {Object.entries(bySector).sort((a, b) => b[1].count - a[1].count).map(([sector, data]) => (
+                        <div key={sector} className="flex justify-between items-center text-sm">
+                          <span className="capitalize">{sector}</span>
+                          <span className="text-xs text-muted-foreground">{data.count} deal{data.count > 1 ? "s" : ""} &middot; ${data.value.toLocaleString()}M</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Approved Deals</p>
+                    <div className="space-y-2">
+                      {approvedMeetings.map(m => (
+                        <div key={m.id} className="flex items-center justify-between text-sm border-b border-border/50 pb-1.5 last:border-0">
+                          <div>
+                            <p className="font-medium">{m.deal_name}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{(m.sector || "Unknown").replace(/_/g, " ")}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold tabular-nums">{m.deal_size || "N/A"}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(m.meeting_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-semibold">AI Insight</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {approvedCount > 0
+                        ? `${approvedCount} deal${approvedCount > 1 ? "s" : ""} approved totaling $${totalValue.toLocaleString()}M in enterprise value. ${Object.entries(bySector).sort((a, b) => b[1].value - a[1].value)[0]?.[0] || "N/A"} represents the largest sector exposure at $${Object.entries(bySector).sort((a, b) => b[1].value - a[1].value)[0]?.[1].value.toLocaleString() || 0}M. The average approved deal size is $${approvedCount > 0 ? Math.round(totalValue / approvedCount).toLocaleString() : 0}M, suggesting a focus on mid-to-large cap transactions.`
+                        : "No approved deals to analyze."}
+                    </p>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
+          {drillDownKPI === "rejected" && (() => {
+            const rejectedMeetings = meetings.filter(m => m.outcome === "rejected");
+            const allConcerns: Record<string, number> = {};
+            rejectedMeetings.forEach(m => {
+              if (Array.isArray(m.key_concerns)) {
+                (m.key_concerns as string[]).forEach(c => {
+                  const concern = typeof c === "string" ? c : (c as any).concern || "";
+                  if (concern) allConcerns[concern] = (allConcerns[concern] || 0) + 1;
+                });
+              }
+            });
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <XCircle className="w-5 h-5 text-red-500" />
+                    Rejected Deals Detail
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-5">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Rejected Deals</p>
+                    <div className="space-y-3">
+                      {rejectedMeetings.map(m => (
+                        <div key={m.id} className="border border-border/50 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <p className="font-medium text-sm">{m.deal_name}</p>
+                            <span className="text-xs text-muted-foreground">{new Date(m.meeting_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground capitalize mb-2">{(m.sector || "Unknown").replace(/_/g, " ")} {m.deal_size && <span className="ml-1 font-medium">&middot; {m.deal_size}</span>}</p>
+                          {Array.isArray(m.key_concerns) && m.key_concerns.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {(m.key_concerns as string[]).map((concern, i) => (
+                                <Badge key={i} variant="outline" className="text-[10px] font-normal text-red-600 dark:text-red-400 border-red-200 dark:border-red-800">
+                                  {typeof concern === "string" ? concern : (concern as any).concern || ""}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {rejectedMeetings.length === 0 && (
+                        <p className="text-sm text-muted-foreground">No rejected deals found.</p>
+                      )}
+                    </div>
+                  </div>
+                  {Object.keys(allConcerns).length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Common Rejection Themes</p>
+                      <div className="space-y-1.5">
+                        {Object.entries(allConcerns).sort((a, b) => b[1] - a[1]).map(([concern, count]) => (
+                          <div key={concern} className="flex justify-between items-center text-sm">
+                            <span>{concern}</span>
+                            <Badge variant="outline" className="text-[10px]">{count}x</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-semibold">AI Insight</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {rejectedCount > 0
+                        ? `${rejectedCount} deal${rejectedCount > 1 ? "s" : ""} rejected out of ${totalMeetings} total meetings reviewed. ${Object.keys(allConcerns).length > 0 ? `The most frequent concern cited was "${Object.entries(allConcerns).sort((a, b) => b[1] - a[1])[0][0]}", appearing ${Object.entries(allConcerns).sort((a, b) => b[1] - a[1])[0][1]} time${Object.entries(allConcerns).sort((a, b) => b[1] - a[1])[0][1] > 1 ? "s" : ""}.` : ""} Rejection patterns suggest the committee maintains rigorous valuation discipline and is particularly attentive to structural risks that could impair downside protection.`
+                        : "No rejected deals to analyze — the committee has approved all deals reviewed."}
+                    </p>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
+          {drillDownKPI === "rate" && (() => {
+            const rateBySector: Record<string, { approved: number; total: number }> = {};
+            const rateByQuarter: Record<string, { approved: number; total: number }> = {};
+            meetings.forEach(m => {
+              const s = (m.sector || "Unknown").replace(/_/g, " ");
+              if (!rateBySector[s]) rateBySector[s] = { approved: 0, total: 0 };
+              if (m.outcome === "approved" || m.outcome === "rejected") {
+                rateBySector[s].total += 1;
+                if (m.outcome === "approved") rateBySector[s].approved += 1;
+              }
+              const d = new Date(m.meeting_date);
+              const q = `Q${Math.ceil((d.getMonth() + 1) / 3)} ${d.getFullYear()}`;
+              if (!rateByQuarter[q]) rateByQuarter[q] = { approved: 0, total: 0 };
+              if (m.outcome === "approved" || m.outcome === "rejected") {
+                rateByQuarter[q].total += 1;
+                if (m.outcome === "approved") rateByQuarter[q].approved += 1;
+              }
+            });
+            const decidedCount = approvedCount + rejectedCount;
+            const deferredCount = meetings.filter(m => m.outcome === "deferred").length;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-blue-500" />
+                    Approval Rate Analysis
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-5">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-blue-500/10 rounded-lg p-3 text-center flex-1">
+                      <p className="text-2xl font-bold tabular-nums">{approvalRate}%</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Overall Rate</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3 text-center flex-1">
+                      <p className="text-2xl font-bold tabular-nums">{decidedCount}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Decided</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3 text-center flex-1">
+                      <p className="text-2xl font-bold tabular-nums">{deferredCount}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Deferred</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">By Sector</p>
+                    <div className="space-y-1.5">
+                      {Object.entries(rateBySector).filter(([, d]) => d.total > 0).sort((a, b) => (b[1].approved / b[1].total) - (a[1].approved / a[1].total)).map(([sector, data]) => (
+                        <div key={sector} className="flex justify-between items-center text-sm">
+                          <span className="capitalize">{sector}</span>
+                          <span className="font-semibold tabular-nums">{Math.round((data.approved / data.total) * 100)}% <span className="text-xs text-muted-foreground font-normal">({data.approved}/{data.total})</span></span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">By Quarter</p>
+                    <div className="space-y-1.5">
+                      {Object.entries(rateByQuarter).sort().reverse().map(([quarter, data]) => (
+                        <div key={quarter} className="flex justify-between items-center text-sm">
+                          <span>{quarter}</span>
+                          <span className="font-semibold tabular-nums">{data.total > 0 ? Math.round((data.approved / data.total) * 100) : 0}% <span className="text-xs text-muted-foreground font-normal">({data.approved}/{data.total})</span></span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-semibold">AI Insight</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {decidedCount > 0
+                        ? `The IC approval rate stands at ${approvalRate}% across ${decidedCount} decided deal${decidedCount > 1 ? "s" : ""}${deferredCount > 0 ? `, with ${deferredCount} additional deal${deferredCount > 1 ? "s" : ""} deferred for further review` : ""}. ${approvalRate >= 70 ? "The high approval rate reflects strong deal sourcing and pre-screening, ensuring only well-vetted opportunities reach the IC." : approvalRate >= 40 ? "The moderate approval rate indicates a balanced approach — the committee is selective while maintaining healthy deal flow throughput." : "The conservative approval rate signals rigorous scrutiny at the IC level, prioritizing capital preservation over deal volume."}`
+                        : "No decided deals available to compute approval rate trends."}
+                    </p>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-2.5 opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
