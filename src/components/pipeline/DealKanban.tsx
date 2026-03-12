@@ -17,6 +17,7 @@ import {
   Clock,
   TrendingUp,
   Target,
+  Sparkles,
   MoreHorizontal,
   SortAsc,
   SortDesc,
@@ -272,13 +273,14 @@ function sortDeals(deals: Deal[], sortKey: SortKey, sortDir: SortDirection): Dea
 // ---------------------------------------------------------------------------
 
 function QuickStatsBar({ deals }: { deals: Deal[] }) {
+  const [drillDownCard, setDrillDownCard] = useState<string | null>(null);
+
   const totalDeals = deals.length;
   const totalEV = sumEV(deals);
   const avgDays = useMemo(() => {
     if (deals.length === 0) return 0;
     const closedDeals = deals.filter((d) => d.stage === "closed");
     if (closedDeals.length === 0) {
-      // Compute average days since creation for active deals
       const total = deals.reduce((sum, d) => {
         const created = new Date(d.created_at);
         const now = new Date();
@@ -294,36 +296,297 @@ function QuickStatsBar({ deals }: { deals: Deal[] }) {
     return Math.round(total / closedDeals.length);
   }, [deals]);
 
+  // --- Drill-down metrics ---
+
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    STAGES.forEach((s) => { counts[s.id] = 0; });
+    deals.forEach((d) => { counts[d.stage] = (counts[d.stage] || 0) + 1; });
+    return counts;
+  }, [deals]);
+
+  const parseEVtoM = (d: Deal): number => {
+    if (!d.deal_size) return 0;
+    const raw = d.deal_size.replace(/[^0-9.]/g, "");
+    const num = parseFloat(raw);
+    if (isNaN(num)) return 0;
+    return d.deal_size.toLowerCase().includes("b") ? num * 1000 : num;
+  };
+
+  const evMetrics = useMemo(() => {
+    const byStage: Record<string, number> = {};
+    STAGES.forEach((s) => { byStage[s.id] = 0; });
+    const bySector: Record<string, number> = {};
+    let largest: { name: string; ev: number } = { name: "--", ev: 0 };
+    let totalM = 0;
+    let withEV = 0;
+
+    deals.forEach((d) => {
+      const ev = parseEVtoM(d);
+      if (ev > 0) {
+        withEV++;
+        totalM += ev;
+        byStage[d.stage] = (byStage[d.stage] || 0) + ev;
+        bySector[d.sector] = (bySector[d.sector] || 0) + ev;
+        if (ev > largest.ev) {
+          largest = { name: d.company_name || d.deal_name, ev };
+        }
+      }
+    });
+
+    const fmtM = (m: number) => m >= 1000 ? `$${(m / 1000).toFixed(1)}B` : `$${m.toFixed(0)}M`;
+    return {
+      byStage: STAGES.map((s) => ({ label: s.label, value: fmtM(byStage[s.id]) })),
+      avgDealSize: withEV > 0 ? fmtM(totalM / withEV) : "$0",
+      largest: { name: largest.name, value: fmtM(largest.ev) },
+      bySector: Object.entries(bySector)
+        .sort((a, b) => b[1] - a[1])
+        .map(([sector, m]) => ({ label: sector, value: fmtM(m) })),
+    };
+  }, [deals]);
+
+  const velocityMetrics = useMemo(() => {
+    const now = new Date();
+    const dealDays = deals.map((d) => {
+      const created = new Date(d.created_at);
+      const end = d.stage === "closed" ? new Date(d.updated_at) : now;
+      return {
+        name: d.company_name || d.deal_name,
+        days: Math.max(0, Math.floor((end.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))),
+        stage: d.stage,
+      };
+    });
+
+    const sorted = [...dealDays].sort((a, b) => a.days - b.days);
+    const fastest = sorted.slice(0, 3);
+    const longest = [...sorted].reverse().slice(0, 3);
+
+    const avgByStage: Record<string, { total: number; count: number }> = {};
+    STAGES.forEach((s) => { avgByStage[s.id] = { total: 0, count: 0 }; });
+    dealDays.forEach((dd) => {
+      if (avgByStage[dd.stage]) {
+        avgByStage[dd.stage].total += dd.days;
+        avgByStage[dd.stage].count++;
+      }
+    });
+
+    const buckets = [
+      { label: "< 30 days", count: dealDays.filter((d) => d.days < 30).length },
+      { label: "30-60 days", count: dealDays.filter((d) => d.days >= 30 && d.days < 60).length },
+      { label: "60-90 days", count: dealDays.filter((d) => d.days >= 60 && d.days < 90).length },
+      { label: "90-180 days", count: dealDays.filter((d) => d.days >= 90 && d.days < 180).length },
+      { label: "180+ days", count: dealDays.filter((d) => d.days >= 180).length },
+    ];
+
+    return {
+      fastest,
+      longest,
+      avgByStage: STAGES.map((s) => ({
+        label: s.label,
+        value: avgByStage[s.id].count > 0
+          ? `${Math.round(avgByStage[s.id].total / avgByStage[s.id].count)}d`
+          : "--",
+      })),
+      buckets,
+    };
+  }, [deals]);
+
+  // --- AI Insights ---
+
+  const totalDealsInsight = useMemo(() => {
+    const active = deals.filter((d) => d.stage !== "closed" && d.stage !== "passed").length;
+    const closed = stageCounts["closed"] || 0;
+    const passed = stageCounts["passed"] || 0;
+    const earlyStage = (stageCounts["sourcing"] || 0) + (stageCounts["initial_review"] || 0);
+    const lateStage = (stageCounts["approved"] || 0) + (stageCounts["ic_complete"] || 0);
+    const ratio = active > 0 ? ((earlyStage / active) * 100).toFixed(0) : "0";
+    return `Pipeline has ${active} active deals with ${closed} closed and ${passed} passed. ${ratio}% of active deals are in early stages (Sourcing/Initial Review). ${lateStage > 0 ? `${lateStage} deal${lateStage > 1 ? "s" : ""} in late stages approaching close.` : "No deals in late stages yet — focus on advancing DD pipeline."}`;
+  }, [deals, stageCounts]);
+
+  const evInsight = useMemo(() => {
+    const activeDeals = deals.filter((d) => d.stage !== "closed" && d.stage !== "passed");
+    const activeEV = sumEV(activeDeals);
+    const ddPlusDeals = deals.filter((d) => ["due_diligence", "ic_scheduled", "ic_complete", "approved"].includes(d.stage));
+    const ddPlusEV = sumEV(ddPlusDeals);
+    return `Active pipeline value is ${activeEV} across ${activeDeals.length} deals. ${ddPlusDeals.length > 0 ? `${ddPlusEV} (${ddPlusDeals.length} deals) has progressed past Initial Review into DD+.` : "No deals have advanced past Initial Review yet."} Average deal size is ${evMetrics.avgDealSize}. Largest opportunity is ${evMetrics.largest.name} at ${evMetrics.largest.value}.`;
+  }, [deals, evMetrics]);
+
+  const velocityInsight = useMemo(() => {
+    const closedDeals = deals.filter((d) => d.stage === "closed");
+    const fastBucket = velocityMetrics.buckets[0].count;
+    const slowBucket = velocityMetrics.buckets[4].count;
+    return `Average time in pipeline is ${avgDays} days. ${fastBucket} deal${fastBucket !== 1 ? "s" : ""} closed within 30 days. ${slowBucket > 0 ? `${slowBucket} deal${slowBucket !== 1 ? "s" : ""} have been in pipeline 180+ days — consider reviewing stale opportunities.` : "No deals exceeding 180 days — pipeline velocity is healthy."} ${closedDeals.length > 0 ? `${closedDeals.length} deal${closedDeals.length > 1 ? "s" : ""} have reached close.` : "No deals closed yet."}`;
+  }, [deals, avgDays, velocityMetrics]);
+
   return (
-    <div className="grid grid-cols-3 gap-3">
-      <div className="glass rounded-lg px-4 py-2.5 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-          <Target className="w-4 h-4 text-blue-400" />
+    <>
+      <div className="grid grid-cols-3 gap-3">
+        <div
+          className="glass rounded-lg px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+          onClick={() => setDrillDownCard("total_deals")}
+        >
+          <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+            <Target className="w-4 h-4 text-blue-400" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Total Deals</p>
+            <p className="text-lg font-semibold tabular-nums">{totalDeals}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Total Deals</p>
-          <p className="text-lg font-semibold tabular-nums">{totalDeals}</p>
+        <div
+          className="glass rounded-lg px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+          onClick={() => setDrillDownCard("pipeline_ev")}
+        >
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Pipeline EV</p>
+            <p className="text-lg font-semibold tabular-nums">{totalEV}</p>
+          </div>
+        </div>
+        <div
+          className="glass rounded-lg px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+          onClick={() => setDrillDownCard("avg_days")}
+        >
+          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+            <Clock className="w-4 h-4 text-amber-400" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Avg Days in Pipeline</p>
+            <p className="text-lg font-semibold tabular-nums">{avgDays}</p>
+          </div>
         </div>
       </div>
-      <div className="glass rounded-lg px-4 py-2.5 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-          <TrendingUp className="w-4 h-4 text-emerald-400" />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Pipeline EV</p>
-          <p className="text-lg font-semibold tabular-nums">{totalEV}</p>
-        </div>
-      </div>
-      <div className="glass rounded-lg px-4 py-2.5 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-          <Clock className="w-4 h-4 text-amber-400" />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Avg Days in Pipeline</p>
-          <p className="text-lg font-semibold tabular-nums">{avgDays}</p>
-        </div>
-      </div>
-    </div>
+
+      {/* Drill-down Dialog */}
+      <Dialog open={drillDownCard !== null} onOpenChange={(open) => { if (!open) setDrillDownCard(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {drillDownCard === "total_deals" && "Total Deals Breakdown"}
+              {drillDownCard === "pipeline_ev" && "Pipeline EV Breakdown"}
+              {drillDownCard === "avg_days" && "Pipeline Velocity"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Total Deals Drill-Down */}
+          {drillDownCard === "total_deals" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                {STAGES.map((s) => (
+                  <div key={s.id} className="glass rounded-lg px-3 py-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-2 h-2 rounded-full", s.dotColor)} />
+                      <span className="text-sm text-muted-foreground">{s.label}</span>
+                    </div>
+                    <span className="text-sm font-semibold tabular-nums">{stageCounts[s.id]}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="glass rounded-lg p-3 flex gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">{totalDealsInsight}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Pipeline EV Drill-Down */}
+          {drillDownCard === "pipeline_ev" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                {evMetrics.byStage.map((item) => (
+                  <div key={item.label} className="glass rounded-lg px-3 py-2 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{item.label}</span>
+                    <span className="text-sm font-semibold tabular-nums">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="glass rounded-lg px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Avg Deal Size</p>
+                  <p className="text-sm font-semibold tabular-nums">{evMetrics.avgDealSize}</p>
+                </div>
+                <div className="glass rounded-lg px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Largest Deal</p>
+                  <p className="text-sm font-semibold tabular-nums">{evMetrics.largest.value}</p>
+                  <p className="text-xs text-muted-foreground truncate">{evMetrics.largest.name}</p>
+                </div>
+              </div>
+              {evMetrics.bySector.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1.5 font-medium">EV by Sector</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {evMetrics.bySector.map((item) => (
+                      <div key={item.label} className="glass rounded-lg px-3 py-2 flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground truncate mr-2">{item.label}</span>
+                        <span className="text-sm font-semibold tabular-nums">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="glass rounded-lg p-3 flex gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">{evInsight}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Avg Days Drill-Down */}
+          {drillDownCard === "avg_days" && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5 font-medium">Deals by Time Spent</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {velocityMetrics.buckets.map((b) => (
+                    <div key={b.label} className="glass rounded-lg px-3 py-2 flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{b.label}</span>
+                      <span className="text-sm font-semibold tabular-nums">{b.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="glass rounded-lg px-3 py-2">
+                  <p className="text-xs text-muted-foreground mb-1 font-medium">Fastest to Close</p>
+                  {velocityMetrics.fastest.map((f, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs py-0.5">
+                      <span className="text-muted-foreground truncate mr-2">{f.name}</span>
+                      <span className="font-semibold tabular-nums">{f.days}d</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="glass rounded-lg px-3 py-2">
+                  <p className="text-xs text-muted-foreground mb-1 font-medium">Longest in Pipeline</p>
+                  {velocityMetrics.longest.map((l, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs py-0.5">
+                      <span className="text-muted-foreground truncate mr-2">{l.name}</span>
+                      <span className="font-semibold tabular-nums">{l.days}d</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5 font-medium">Avg Days by Stage</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {velocityMetrics.avgByStage.map((item) => (
+                    <div key={item.label} className="glass rounded-lg px-3 py-2 flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{item.label}</span>
+                      <span className="text-sm font-semibold tabular-nums">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="glass rounded-lg p-3 flex gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">{velocityInsight}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

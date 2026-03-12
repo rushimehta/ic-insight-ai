@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { FolderOpen, FileText, Calendar, Building2, Search, ChevronRight, Loader2, Eye, Briefcase, Tag, Download, Clock, Users, DollarSign, Target, BarChart3 } from "lucide-react";
+import { FolderOpen, FileText, Calendar, Building2, Search, ChevronRight, Loader2, Eye, Briefcase, Tag, Download, Clock, Users, DollarSign, Target, BarChart3, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -762,6 +762,7 @@ export function DocumentRepository() {
   const [documentContent, setDocumentContent] = useState<string | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [activeTab, setActiveTab] = useState("content");
+  const [drillDownStat, setDrillDownStat] = useState<string | null>(null);
 
   const documents = useMemo(() => {
     const real = realDocuments as Document[];
@@ -922,7 +923,11 @@ export function DocumentRepository() {
           { label: "Active Deals", value: new Set(documents.map(d => d.deal_name).filter(Boolean)).size.toString(), icon: Briefcase },
           { label: "Archive Years", value: years.length.toString(), icon: Calendar },
         ].map(stat => (
-          <div key={stat.label} className="glass rounded-xl p-3 flex items-center gap-3">
+          <div
+            key={stat.label}
+            className="glass rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+            onClick={() => setDrillDownStat(stat.label)}
+          >
             <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
               <stat.icon className="w-4 h-4 text-primary" />
             </div>
@@ -933,6 +938,241 @@ export function DocumentRepository() {
           </div>
         ))}
       </div>
+
+      {/* Drill-Down Dialog */}
+      <Dialog open={drillDownStat !== null} onOpenChange={(open) => { if (!open) setDrillDownStat(null); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {drillDownStat === "Total Documents" && <FileText className="w-5 h-5 text-primary" />}
+              {drillDownStat === "Sectors Covered" && <Building2 className="w-5 h-5 text-primary" />}
+              {drillDownStat === "Active Deals" && <Briefcase className="w-5 h-5 text-primary" />}
+              {drillDownStat === "Archive Years" && <Calendar className="w-5 h-5 text-primary" />}
+              {drillDownStat}
+            </DialogTitle>
+          </DialogHeader>
+
+          {drillDownStat === "Total Documents" && (() => {
+            const byType: Record<string, number> = {};
+            const byStatus: Record<string, number> = {};
+            const byCategory: Record<string, number> = {};
+            let totalSize = 0;
+            documents.forEach((doc: any) => {
+              const ext = (doc.file_type || doc.filename?.split('.').pop() || "unknown").toUpperCase();
+              byType[ext] = (byType[ext] || 0) + 1;
+              const status = doc.status || "unknown";
+              byStatus[status] = (byStatus[status] || 0) + 1;
+              const category = doc.sector || "Uncategorized";
+              byCategory[category] = (byCategory[category] || 0) + 1;
+              totalSize += doc.file_size || 0;
+            });
+            const avgSize = documents.length > 0 ? totalSize / documents.length : 0;
+            const topType = Object.entries(byType).sort((a, b) => b[1] - a[1])[0];
+            const processedCount = byStatus["processed"] || byStatus["completed"] || 0;
+            const processedPct = documents.length > 0 ? Math.round((processedCount / documents.length) * 100) : 0;
+
+            return (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">By File Type</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
+                      <div key={type} className="flex justify-between items-center bg-muted/50 rounded-lg px-3 py-2">
+                        <span className="text-sm font-medium">{type}</span>
+                        <Badge variant="secondary">{count}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">By Status</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(byStatus).sort((a, b) => b[1] - a[1]).map(([status, count]) => (
+                      <div key={status} className="flex justify-between items-center bg-muted/50 rounded-lg px-3 py-2">
+                        <span className="text-sm font-medium capitalize">{status}</span>
+                        <Badge variant="secondary">{count}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">By Document Category</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(byCategory).sort((a, b) => b[1] - a[1]).map(([cat, count]) => (
+                      <div key={cat} className="flex justify-between items-center bg-muted/50 rounded-lg px-3 py-2">
+                        <span className="text-sm font-medium">{cat.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
+                        <Badge variant="secondary">{count}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-muted/50 rounded-lg px-3 py-2 flex justify-between items-center">
+                  <span className="text-sm font-medium">Average Document Size</span>
+                  <span className="text-sm font-bold">{formatFileSize(avgSize)}</span>
+                </div>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">AI Insight</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Your archive contains {documents.length} documents across {Object.keys(byType).length} file types.
+                    {topType && ` ${topType[0]} is the dominant format with ${topType[1]} files (${Math.round((topType[1] / documents.length) * 100)}%).`}
+                    {` ${processedPct}% of documents have been processed.`}
+                    {avgSize > 0 && ` Average document size is ${formatFileSize(avgSize)}, suggesting ${avgSize > 1024 * 1024 ? "comprehensive" : "concise"} documentation.`}
+                    {Object.keys(byCategory).length < 3 && " Consider expanding sector coverage for a more diversified portfolio view."}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {drillDownStat === "Sectors Covered" && (() => {
+            const sectorData: Record<string, { count: number; lastIcDate: string | null; deals: Set<string> }> = {};
+            documents.forEach((doc: any) => {
+              const sector = doc.sector || "Uncategorized";
+              if (!sectorData[sector]) sectorData[sector] = { count: 0, lastIcDate: null, deals: new Set() };
+              sectorData[sector].count += 1;
+              if (doc.deal_name) sectorData[sector].deals.add(doc.deal_name);
+              if (doc.ic_date && (!sectorData[sector].lastIcDate || doc.ic_date > sectorData[sector].lastIcDate)) {
+                sectorData[sector].lastIcDate = doc.ic_date;
+              }
+            });
+            const sortedSectors = Object.entries(sectorData).sort((a, b) => b[1].count - a[1].count);
+            const topSector = sortedSectors[0];
+            const avgDocsPerSector = Math.round(documents.length / Object.keys(sectorData).length);
+
+            return (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  {sortedSectors.map(([sector, data]) => (
+                    <div key={sector} className="bg-muted/50 rounded-lg px-4 py-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-semibold">{sector.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
+                        <Badge variant="secondary">{data.count} docs</Badge>
+                      </div>
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span>{data.deals.size} deal{data.deals.size !== 1 ? "s" : ""}</span>
+                        <span>Last IC: {data.lastIcDate ? format(new Date(data.lastIcDate), "MMM d, yyyy") : "N/A"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">AI Insight</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Coverage spans {Object.keys(sectorData).length} sectors with an average of {avgDocsPerSector} documents per sector.
+                    {topSector && ` ${topSector[0].split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} leads with ${topSector[1].count} documents and ${topSector[1].deals.size} active deals.`}
+                    {sortedSectors.length > 1 && sortedSectors[sortedSectors.length - 1][1].count < 3 && ` ${sortedSectors[sortedSectors.length - 1][0].split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} has limited documentation (${sortedSectors[sortedSectors.length - 1][1].count}) and may need attention.`}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {drillDownStat === "Active Deals" && (() => {
+            const dealData: Record<string, { count: number; mostRecent: string; sector: string }> = {};
+            documents.forEach((doc: any) => {
+              const deal = doc.deal_name || "Uncategorized";
+              if (!dealData[deal]) dealData[deal] = { count: 0, mostRecent: "", sector: doc.sector || "Unknown" };
+              dealData[deal].count += 1;
+              const docDate = doc.ic_date || doc.created_at || "";
+              if (docDate > dealData[deal].mostRecent) dealData[deal].mostRecent = docDate;
+            });
+            const sortedDeals = Object.entries(dealData).sort((a, b) => b[1].count - a[1].count);
+            const avgDocsPerDeal = sortedDeals.length > 0 ? Math.round(documents.length / sortedDeals.length) : 0;
+            const underDocumented = sortedDeals.filter(([, d]) => d.count < 2);
+
+            return (
+              <div className="space-y-4">
+                <ScrollArea className="max-h-[40vh]">
+                  <div className="space-y-2">
+                    {sortedDeals.map(([deal, data]) => (
+                      <div key={deal} className="bg-muted/50 rounded-lg px-4 py-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm font-semibold">{deal}</span>
+                          <Badge variant="secondary">{data.count} doc{data.count !== 1 ? "s" : ""}</Badge>
+                        </div>
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                          <span>{data.sector.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
+                          <span>Latest: {data.mostRecent ? format(new Date(data.mostRecent), "MMM d, yyyy") : "N/A"}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">AI Insight</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Tracking {sortedDeals.length} active deals with an average of {avgDocsPerDeal} documents each.
+                    {underDocumented.length > 0 && ` ${underDocumented.length} deal${underDocumented.length !== 1 ? "s" : ""} (${underDocumented.slice(0, 3).map(d => d[0]).join(", ")}${underDocumented.length > 3 ? "..." : ""}) ${underDocumented.length !== 1 ? "have" : "has"} limited documentation and may require additional IC materials for thorough evaluation.`}
+                    {sortedDeals.length > 0 && ` ${sortedDeals[0][0]} is the most documented deal with ${sortedDeals[0][1].count} files.`}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {drillDownStat === "Archive Years" && (() => {
+            const yearData: Record<string, number> = {};
+            documents.forEach((doc: any) => {
+              const year = doc.created_at ? new Date(doc.created_at).getFullYear().toString() : "Unknown";
+              yearData[year] = (yearData[year] || 0) + 1;
+            });
+            const sortedYears = Object.entries(yearData).sort((a, b) => b[0].localeCompare(a[0]));
+            const mostActiveYear = Object.entries(yearData).sort((a, b) => b[1] - a[1])[0];
+            const maxCount = Math.max(...Object.values(yearData));
+            const recentYears = sortedYears.slice(0, 2);
+            const trend = recentYears.length >= 2
+              ? recentYears[0][1] > recentYears[1][1] ? "increasing" : recentYears[0][1] < recentYears[1][1] ? "decreasing" : "stable"
+              : "stable";
+
+            return (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  {sortedYears.map(([year, count]) => (
+                    <div key={year} className="bg-muted/50 rounded-lg px-4 py-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-semibold">{year}</span>
+                        <Badge variant="secondary">{count} doc{count !== 1 ? "s" : ""}</Badge>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div
+                          className="bg-primary/60 rounded-full h-2 transition-all"
+                          style={{ width: `${(count / maxCount) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-muted/50 rounded-lg px-3 py-2 flex justify-between items-center">
+                  <span className="text-sm font-medium">Most Active Year</span>
+                  <span className="text-sm font-bold">{mostActiveYear ? `${mostActiveYear[0]} (${mostActiveYear[1]} docs)` : "N/A"}</span>
+                </div>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">AI Insight</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    The archive spans {sortedYears.length} year{sortedYears.length !== 1 ? "s" : ""} of IC documentation.
+                    {mostActiveYear && ` ${mostActiveYear[0]} was the most prolific year with ${mostActiveYear[1]} documents.`}
+                    {` Documentation volume is ${trend} based on recent activity.`}
+                    {trend === "decreasing" && " Consider ensuring current deal pipeline documentation is being captured consistently."}
+                    {trend === "increasing" && " The growing archive suggests a maturing documentation discipline across the team."}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <div className="glass rounded-xl p-4 opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>

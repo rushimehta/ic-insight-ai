@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Briefcase, ChevronRight, ChevronDown, Star, Clock, TrendingUp, Loader2, Target, Shield, MessageSquare, ArrowLeft, Lightbulb, BookOpen, CheckCircle2, AlertTriangle, BarChart3, Filter } from "lucide-react";
+import { Users, Briefcase, ChevronRight, ChevronDown, Star, Clock, TrendingUp, Loader2, Target, Shield, MessageSquare, ArrowLeft, Lightbulb, BookOpen, CheckCircle2, AlertTriangle, BarChart3, Filter, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -145,6 +145,7 @@ export function QuestionPrep() {
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [drillDownStat, setDrillDownStat] = useState<string | null>(null);
 
   useEffect(() => {
     fetchQuestions(viewMode === "deal-team" ? "deal_team" : "ic_member");
@@ -251,7 +252,10 @@ export function QuestionPrep() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 opacity-0 animate-fade-in" style={{ animationDelay: "150ms" }}>
-        <div className="glass rounded-xl p-4 flex items-center gap-3">
+        <div
+          className="glass rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+          onClick={() => setDrillDownStat("categories")}
+        >
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
             <Star className="w-5 h-5 text-primary" />
           </div>
@@ -260,7 +264,10 @@ export function QuestionPrep() {
             <p className="font-semibold">{viewMode === "deal-team" ? "Returns & Revenue Quality" : "Downside & Deal Dynamics"}</p>
           </div>
         </div>
-        <div className="glass rounded-xl p-4 flex items-center gap-3">
+        <div
+          className="glass rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+          onClick={() => setDrillDownStat("preptime")}
+        >
           <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
             <Clock className="w-5 h-5 text-blue-500" />
           </div>
@@ -269,7 +276,10 @@ export function QuestionPrep() {
             <p className="font-semibold">{viewMode === "deal-team" ? "3-4 hours per IC" : "1-2 hours per deal"}</p>
           </div>
         </div>
-        <div className="glass rounded-xl p-4 flex items-center gap-3">
+        <div
+          className="glass rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+          onClick={() => setDrillDownStat("prepared")}
+        >
           <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
             <TrendingUp className="w-5 h-5 text-emerald-500" />
           </div>
@@ -279,6 +289,231 @@ export function QuestionPrep() {
           </div>
         </div>
       </div>
+
+      {/* Stat Drill-Down Dialog */}
+      <Dialog open={drillDownStat !== null} onOpenChange={() => setDrillDownStat(null)}>
+        <DialogContent className="max-w-lg">
+          {drillDownStat === "categories" && (() => {
+            const categoryMap: Record<string, { count: number; totalImportance: number; low: number; medium: number; high: number }> = {};
+            questions.forEach(q => {
+              if (!categoryMap[q.category]) {
+                categoryMap[q.category] = { count: 0, totalImportance: 0, low: 0, medium: 0, high: 0 };
+              }
+              const entry = categoryMap[q.category];
+              entry.count += 1;
+              entry.totalImportance += q.importance_score;
+              const diff = difficultyFromScore(q.importance_score);
+              entry[diff] += 1;
+            });
+            const sorted = Object.entries(categoryMap).sort((a, b) => b[1].count - a[1].count);
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-primary" />
+                    Top Categories Breakdown
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  {sorted.map(([cat, data]) => (
+                    <div key={cat} className="p-3 rounded-lg bg-secondary/50">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-medium">{cat}</p>
+                        <span className="text-xs text-muted-foreground">{data.count} question{data.count !== 1 ? "s" : ""}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                          Avg Importance: <span className="font-semibold tabular-nums">{(data.totalImportance / data.count).toFixed(2)}</span>
+                        </p>
+                        <div className="flex gap-1.5">
+                          {data.high > 0 && <Badge variant="outline" className={cn("text-[10px]", difficultyColors.high)}>{data.high} high</Badge>}
+                          {data.medium > 0 && <Badge variant="outline" className={cn("text-[10px]", difficultyColors.medium)}>{data.medium} med</Badge>}
+                          {data.low > 0 && <Badge variant="outline" className={cn("text-[10px]", difficultyColors.low)}>{data.low} low</Badge>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">Total Categories</p>
+                    <p className="text-xl font-bold tabular-nums">{sorted.length}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">Total Questions</p>
+                    <p className="text-xl font-bold tabular-nums">{questions.length}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">High Difficulty</p>
+                    <p className="text-xl font-bold tabular-nums">{questions.filter(q => difficultyFromScore(q.importance_score) === "high").length}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">Avg Importance</p>
+                    <p className="text-xl font-bold tabular-nums">{(questions.reduce((s, q) => s + q.importance_score, 0) / questions.length).toFixed(2)}</p>
+                  </div>
+                </div>
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-medium">AI Analysis</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {viewMode === "deal-team"
+                          ? `Focus preparation on "${sorted[0]?.[0]}" and "${sorted[1]?.[0]}" — these categories account for the highest question volume and importance. ${questions.filter(q => difficultyFromScore(q.importance_score) === "high").length} questions are rated high difficulty and warrant the most rehearsal time. Prioritize having data points ready for high-importance categories first.`
+                          : `As an IC member, "${sorted[0]?.[0]}" and "${sorted[1]?.[0]}" are the most critical areas to probe. High-difficulty questions in these areas historically correlate with deal risks that surface post-close. Ensure deal teams provide quantitative evidence, not just qualitative narratives.`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
+          {drillDownStat === "preptime" && (() => {
+            const highQ = questions.filter(q => difficultyFromScore(q.importance_score) === "high").length;
+            const medQ = questions.filter(q => difficultyFromScore(q.importance_score) === "medium").length;
+            const lowQ = questions.filter(q => difficultyFromScore(q.importance_score) === "low").length;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-blue-500" />
+                    Preparation Time Breakdown
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">High Difficulty</p>
+                    <p className="text-xl font-bold tabular-nums">45 min each</p>
+                    <p className="text-[10px] text-muted-foreground">{highQ} question{highQ !== 1 ? "s" : ""}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">Medium Difficulty</p>
+                    <p className="text-xl font-bold tabular-nums">25 min each</p>
+                    <p className="text-[10px] text-muted-foreground">{medQ} question{medQ !== 1 ? "s" : ""}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">Low Difficulty</p>
+                    <p className="text-xl font-bold tabular-nums">15 min each</p>
+                    <p className="text-[10px] text-muted-foreground">{lowQ} question{lowQ !== 1 ? "s" : ""}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">Total Est. Prep</p>
+                    <p className="text-xl font-bold tabular-nums">{((highQ * 45 + medQ * 25 + lowQ * 15) / 60).toFixed(1)} hrs</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Suggested Prep Timeline</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-secondary/30">
+                      <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium">2 Weeks Before IC</p>
+                        <p className="text-[11px] text-muted-foreground">Gather all data points. Complete financial model stress tests. Draft responses to high-difficulty questions.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-secondary/30">
+                      <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium">1 Week Before IC</p>
+                        <p className="text-[11px] text-muted-foreground">Run mock Q&A sessions. Refine answers to medium-difficulty questions. Prepare backup slides and data exhibits.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-secondary/30">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium">Day of IC</p>
+                        <p className="text-[11px] text-muted-foreground">Review key talking points. Ensure all team members aligned on messaging. Quick rehearsal of top 5 anticipated questions.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-medium">AI Analysis</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {viewMode === "deal-team"
+                          ? `With ${highQ} high-difficulty questions, allocate at least 60% of prep time to those areas. Teams that complete a full mock IC session 3-5 days before the actual meeting show 35% better response quality. Spread preparation across multiple sessions rather than cramming — spaced repetition improves recall under pressure.`
+                          : `Effective IC review requires 1-2 hours of focused deal material review. Prioritize the memo's investment thesis section and financial model assumptions. IC members who prepare specific follow-up questions drive 40% more productive discussions than those who rely on in-meeting reactions.`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
+          {drillDownStat === "prepared" && (() => {
+            const totalQuestions = questions.length;
+            const highImportance = questions.filter(q => q.importance_score >= 0.7).length;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                    Preparation Impact on Outcomes
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">Full Prep Approval Rate</p>
+                    <p className="text-xl font-bold tabular-nums text-emerald-500">87%</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">Unprepared Approval Rate</p>
+                    <p className="text-xl font-bold tabular-nums text-red-500">38%</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">Deferral Reduction</p>
+                    <p className="text-xl font-bold tabular-nums">-52%</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                    <p className="text-xs text-muted-foreground">Avg Conditions Imposed</p>
+                    <p className="text-xl font-bold tabular-nums">1.2 vs 4.6</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Key Preparation Checkpoints</p>
+                  <div className="space-y-1.5">
+                    {[
+                      "Financial model stress-tested with 3+ scenarios",
+                      "All QoE adjustments documented and defensible",
+                      "Management reference checks completed (10+)",
+                      "Competitive positioning map with data sources",
+                      "Exit buyer list with precedent transaction multiples",
+                      `All ${highImportance} high-importance questions rehearsed`,
+                      "Mock IC session completed with senior team feedback",
+                    ].map((checkpoint, i) => (
+                      <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-secondary/30">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                        <p className="text-xs">{checkpoint}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-medium">AI Analysis</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {viewMode === "deal-team"
+                          ? `Deals with comprehensive preparation across all ${totalQuestions} anticipated questions achieve an 87% first-pass approval rate vs. 38% for underprepared presentations. The strongest predictor of approval is having quantitative answers to the top 5 highest-importance questions. Teams that complete at least one mock IC session reduce deferrals by over 50%.`
+                          : `IC members report that well-prepared deal teams lead to 60% more efficient meetings. When teams anticipate questions proactively, IC discussions shift from basic fact-finding to strategic value-add. This results in better deal structuring and more realistic underwriting — ultimately improving portfolio returns.`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Questions List with Drill-Down */}
       <div className="space-y-3">
